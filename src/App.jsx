@@ -548,7 +548,6 @@ export default function App() {
         <div className="toolbar-btns">
           <button className="toolbar-btn cancel" onClick={clearSelection}>Cancelar</button>
           <button className="toolbar-btn warn" onClick={handleDiscard}>🗑️ Descartar</button>
-          <button className="toolbar-btn danger" onClick={handleDelete}>💀 Eliminar</button>
           {tab === 'pending' && (
             <button className="toolbar-btn primary" onClick={handleAnalyze}>🤖 Analizar con IA</button>
           )}
