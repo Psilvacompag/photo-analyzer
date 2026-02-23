@@ -3,7 +3,7 @@
 // ==========================================
 
 // Pegá acá tu URL de deployment de GAS (la que termina en /exec)
-const GAS_URL = import.meta.env.VITE_GAS_URL || '';
+const GAS_URL = import.meta.env.VITE_GAS_URL || 'https://script.google.com/macros/s/AKfycbw3AwTjAGw0UqrEoMJzBASqHr4-Soj3tCwHZ8t8WfUTe59jPhVvTzKSz0ROtO32O6H_/exec';
 
 // GAS redirige (302) a script.googleusercontent.com que sí tiene CORS headers
 async function gasRequest(params) {
