@@ -315,7 +315,7 @@ export default function App() {
     if (!fns.length) return
     setModal({
       icon: '🗑️', title: 'Descartar fotos',
-      message: `${fns.length} foto(s) se moverán a descartadas.`,
+      message: `${fns.length} foto(s) se moverán a descartadas (JPG + RAW). Podrás recuperarlas después.`,
       confirmLabel: 'Descartar', variant: 'warn',
       onConfirm: async () => {
         setModal(null)
@@ -325,6 +325,7 @@ export default function App() {
           if (!isDemoMode()) await api.discardPhotos(fns)
           await new Promise(r => setTimeout(r, 600))
           setPending(prev => prev.filter(p => !fns.includes(p.filename)))
+          setReviewed(prev => prev.filter(p => !fns.includes(p.filename)))
           setRemoving({})
           showToast(`🗑️ ${fns.length} foto(s) descartadas`)
           if (!isDemoMode()) loadData(false)
@@ -340,9 +341,9 @@ export default function App() {
     const fns = Object.keys(selected)
     if (!fns.length) return
     setModal({
-      icon: '⚠️', title: 'Eliminar fotos',
-      message: `${fns.length} foto(s) y archivos asociados serán eliminados.`,
-      confirmLabel: 'Eliminar', variant: 'danger',
+      icon: '💀', title: 'Eliminar permanentemente',
+      message: `⚠️ ${fns.length} foto(s) serán ELIMINADAS permanentemente.\n\nSe borrarán: JPG, RAW y review del Sheet.\n\nEsta acción NO se puede deshacer.`,
+      confirmLabel: `Eliminar ${fns.length} foto(s)`, variant: 'danger',
       onConfirm: async () => {
         setModal(null)
         setSelected({})
@@ -350,9 +351,10 @@ export default function App() {
         try {
           if (!isDemoMode()) await api.deletePhotos(fns)
           await new Promise(r => setTimeout(r, 600))
+          setPending(prev => prev.filter(p => !fns.includes(p.filename)))
           setReviewed(prev => prev.filter(p => !fns.includes(p.filename)))
           setRemoving({})
-          showToast(`Eliminadas ${fns.length} foto(s)`)
+          showToast(`💀 ${fns.length} foto(s) eliminadas permanentemente`)
           if (!isDemoMode()) loadData(false)
         } catch (e) {
           setRemoving({})
@@ -535,7 +537,7 @@ export default function App() {
           <div className="empty-state">
             <div className="empty-icon">📷</div>
             <p>No se encontraron fotos</p>
-            {debouncedSearch && <p className="empty-sub">Probá con otros términos de búsqueda</p>}
+            {debouncedSearch && <p className="empty-sub">Prueba con otros términos de búsqueda</p>}
           </div>
         )}
       </div>
@@ -545,12 +547,10 @@ export default function App() {
         <span className="toolbar-count">{selectedCount} seleccionada{selectedCount !== 1 ? 's' : ''}</span>
         <div className="toolbar-btns">
           <button className="toolbar-btn cancel" onClick={clearSelection}>Cancelar</button>
-          {tab === 'pending' && <>
-            <button className="toolbar-btn warn" onClick={handleDiscard}>🗑️ Descartar</button>
+          <button className="toolbar-btn warn" onClick={handleDiscard}>🗑️ Descartar</button>
+          <button className="toolbar-btn danger" onClick={handleDelete}>💀 Eliminar</button>
+          {tab === 'pending' && (
             <button className="toolbar-btn primary" onClick={handleAnalyze}>🤖 Analizar con IA</button>
-          </>}
-          {tab === 'reviewed' && (
-            <button className="toolbar-btn danger" onClick={handleDelete}>🗑️ Eliminar</button>
           )}
         </div>
       </div>
@@ -640,7 +640,7 @@ export default function App() {
                   )}
                 </div>
 
-                <div className="lb-swipe-hint">← deslizá para navegar →</div>
+                <div className="lb-swipe-hint">← desliza para navegar →</div>
               </div>
             </div>
           </div>
@@ -653,7 +653,7 @@ export default function App() {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="modal-icon">{modal.icon}</div>
             <h3 className="modal-title">{modal.title}</h3>
-            <p className="modal-msg">{modal.message}</p>
+            <p className="modal-msg" style={{ whiteSpace: 'pre-line' }}>{modal.message}</p>
             <div className="modal-btns">
               <button className="modal-btn cancel" onClick={() => setModal(null)}>Cancelar</button>
               <button className={`modal-btn ${modal.variant}`} onClick={modal.onConfirm}>{modal.confirmLabel}</button>
