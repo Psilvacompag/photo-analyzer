@@ -5,7 +5,7 @@
 // Fallback a GAS si Cloud Run no está configurado.
 // ==========================================
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://photo-analyzer-agent-81488981381.us-central1.run.app';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://photo-analyzer-agent-81488981381.southamerica-east1.run.app';
 const GAS_URL = import.meta.env.VITE_GAS_URL || '';
 
 // Usar Cloud Run si hay URL válida
