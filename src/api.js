@@ -6,6 +6,7 @@
 // ==========================================
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://photo-analyzer-agent-81488981381.southamerica-east1.run.app';
+const API_KEY = import.meta.env.VITE_API_KEY || 'd9aLhZ5SogBEZyse8rnTDrSSJWKqc3mv5OWbk1VpxsY';
 const GAS_URL = import.meta.env.VITE_GAS_URL || '';
 
 // Usar Cloud Run si hay URL válida
@@ -42,6 +43,7 @@ export function isCacheStale() {
 // ===== CLOUD RUN =====
 async function cloudRunCall(endpoint, params = {}) {
   const url = new URL(`${BACKEND_URL}${endpoint}`);
+  url.searchParams.set('key', API_KEY);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
   const response = await fetch(url.toString());
