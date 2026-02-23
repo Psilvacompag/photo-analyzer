@@ -17,9 +17,10 @@ async function gasRequest(params) {
 
   const response = await fetch(url.toString(), { redirect: 'follow' });
   
-  // GAS returns redirected HTML sometimes, we need the final JSON
+  // GAS returns redirected HTML sometimes, we need the final JSON sd
   const text = await response.text();
   
+
   try {
     const data = JSON.parse(text);
     if (!data.ok) throw new Error(data.error || 'Error del servidor');
