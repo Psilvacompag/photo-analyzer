@@ -39,5 +39,5 @@ export function getDemoThumbUrl(index) {
 }
 
 export function isDemoMode() {
-  return false;
+  return !import.meta.env.VITE_GAS_URL;
 }
