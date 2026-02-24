@@ -26,6 +26,12 @@ export function getCachedData() {
   } catch { return null; }
 }
 
+export async function fetchAnalytics() {
+  return useCloudRun
+    ? await cloudRunCall('/api/analytics')
+    : await gasCall({ action: 'analytics' });
+}
+
 function setCachedData(data) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));

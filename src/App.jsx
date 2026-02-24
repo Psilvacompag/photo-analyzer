@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import * as api from './api'
 import { DEMO_DATA, getDemoThumbUrl, isDemoMode } from './demo-data'
+import Analytics from './Analytics'
+import './analytics.css'
 
 const CAT_ICONS = { paisajes: '🏔️', mascotas: '🐾', arquitectura: '🏛️', personas: '👤', comida: '🍽️', otras: '📁', todas: '✨' }
 const CATEGORIES = ['todas', 'paisajes', 'mascotas', 'arquitectura', 'personas', 'comida', 'otras']
@@ -381,6 +383,7 @@ export default function App() {
         if (e.key === 'r' || e.key === 'R') handleRefresh()
         if (e.key === '1') { setTab('pending'); clearSelection() }
         if (e.key === '2') { setTab('reviewed'); clearSelection() }
+        if (e.key === '3') { setTab('analytics'); clearSelection() }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -456,6 +459,9 @@ export default function App() {
           </button>
           <button className={`tab ${tab === 'reviewed' ? 'active' : ''}`} onClick={() => { setTab('reviewed'); clearSelection() }}>
             ✅ Revisadas <span className="count">{reviewed.length}</span>
+          </button>
+          <button className={`tab ${tab === 'analytics' ? 'active' : ''}`} onClick={() => { setTab('analytics'); clearSelection() }}>
+            📊 Analytics
           </button>
         </div>
         <div className="kbd-hints">
@@ -541,6 +547,9 @@ export default function App() {
           </div>
         )}
       </div>
+
+            {/* ANALYTICS */}
+      {tab === 'analytics' && <Analytics />}
 
       {/* TOOLBAR */}
       <div className={`toolbar ${selectedCount > 0 ? 'visible' : ''}`}>
