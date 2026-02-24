@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import * as api from './api'
 
 const STRENGTH_ICONS = ['💪', '🎯', '✨', '🔥', '⭐']
@@ -11,15 +11,15 @@ export default function Coaching({ data, setData }) {
   const [error, setError] = useState(null)
 
   // Load from localStorage on mount
-  useState(() => {
+// Load from localStorage on mount
+  useEffect(() => {
     if (!data) {
       try {
         const cached = localStorage.getItem(COACHING_CACHE_KEY)
         if (cached) setData(JSON.parse(cached))
       } catch {}
     }
-  })
-
+  }, [])
   async function loadCoaching() {
     setLoading(true)
     setError(null)
