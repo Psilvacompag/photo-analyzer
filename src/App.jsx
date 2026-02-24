@@ -3,6 +3,8 @@ import * as api from './api'
 import { DEMO_DATA, getDemoThumbUrl, isDemoMode } from './demo-data'
 import Analytics from './Analytics'
 import './analytics.css'
+import Coaching from './Coaching'
+import './coaching.css'
 
 const CAT_ICONS = { paisajes: '🏔️', mascotas: '🐾', arquitectura: '🏛️', personas: '👤', comida: '🍽️', otras: '📁', todas: '✨' }
 const CATEGORIES = ['todas', 'paisajes', 'mascotas', 'arquitectura', 'personas', 'comida', 'otras']
@@ -549,7 +551,12 @@ export default function App() {
       </div>
 
             {/* ANALYTICS */}
-      {tab === 'analytics' && <Analytics />}
+      {tab === 'analytics' && (
+  <>
+    <Analytics />
+    <Coaching />
+  </>
+)}
 
       {/* TOOLBAR */}
       <div className={`toolbar ${selectedCount > 0 ? 'visible' : ''}`}>

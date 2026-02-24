@@ -32,6 +32,12 @@ export async function fetchAnalytics() {
     : await gasCall({ action: 'analytics' });
 }
 
+export async function fetchCoaching() {
+  return useCloudRun
+    ? await cloudRunCall('/api/coaching')
+    : await gasCall({ action: 'coaching' });
+}
+
 function setCachedData(data) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
