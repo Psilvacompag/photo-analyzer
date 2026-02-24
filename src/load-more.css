@@ -1,0 +1,50 @@
+/* ==========================================
+   LOAD MORE - Agregar al CSS existente
+   ========================================== */
+
+.load-more-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem 3rem;
+}
+
+.load-more-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 2rem;
+  background: var(--surface2, #1e1e2e);
+  border: 1px solid var(--border, #333);
+  border-radius: 12px;
+  color: var(--text, #e0e0e0);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.load-more-btn:hover:not(:disabled) {
+  background: var(--surface3, #2a2a3e);
+  border-color: var(--accent, #7c6fff);
+  transform: translateY(-1px);
+}
+
+.load-more-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.load-more-count {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--border, #333);
+}
+
+/* Danger button for toolbar */
+.toolbar-btn.danger {
+  background: #dc2626;
+  color: white;
+}
+.toolbar-btn.danger:hover {
+  background: #b91c1c;
+}

@@ -11,7 +11,6 @@ export default function Coaching() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Load from localStorage on mount
   useEffect(() => {
     try {
       const cached = localStorage.getItem(COACHING_CACHE_KEY)
@@ -33,7 +32,6 @@ export default function Coaching() {
     }
   }
 
-  // Not loaded yet - show CTA
   if (!data && !loading && !error) {
     return (
       <div className="coaching">
@@ -41,20 +39,19 @@ export default function Coaching() {
           <div className="coaching-cta-icon">🤖</div>
           <h2 className="coaching-cta-title">AI Photo Coach</h2>
           <p className="coaching-cta-desc">
-            Gemini analiza todas tus fotos, detecta patrones, identifica fortalezas y debilidades, 
+            Gemini analiza todas tus fotos, detecta patrones, identifica fortalezas y debilidades,
             y genera un plan de mejora personalizado.
           </p>
           <button className="coaching-cta-btn" onClick={loadCoaching}>
             <span className="coaching-cta-btn-icon">🧠</span>
             Obtener Coaching Personalizado
           </button>
-          <p className="coaching-cta-note">Toma ~10 segundos · Usa Gemini 3 Flash</p>
+          <p className="coaching-cta-note">Toma ~10 segundos · Usa Gemini 2.5 Flash</p>
         </div>
       </div>
     )
   }
 
-  // Loading
   if (loading) {
     return (
       <div className="coaching">
@@ -68,7 +65,6 @@ export default function Coaching() {
     )
   }
 
-  // Error
   if (error) {
     return (
       <div className="coaching">
@@ -80,21 +76,16 @@ export default function Coaching() {
     )
   }
 
-  // Results
   return (
     <div className="coaching">
-      {/* Header */}
       <div className="coaching-header">
         <div className="coaching-header-left">
           <h2 className="coaching-main-title">🤖 AI Photo Coaching</h2>
           <p className="coaching-main-sub">Análisis personalizado basado en tus {(data.fortalezas?.length || 0) + (data.debilidades?.length || 0)}+ patrones detectados</p>
         </div>
-        <button className="coaching-refresh-btn" onClick={loadCoaching}>
-          🔄 Regenerar
-        </button>
+        <button className="coaching-refresh-btn" onClick={loadCoaching}>🔄 Regenerar</button>
       </div>
 
-      {/* Resumen */}
       <div className="coaching-card coaching-resumen">
         <div className="coaching-resumen-icon">📋</div>
         <div>
@@ -103,7 +94,6 @@ export default function Coaching() {
         </div>
       </div>
 
-      {/* Fortalezas & Debilidades */}
       <div className="coaching-grid">
         <div className="coaching-card">
           <h3 className="coaching-section-title good">💪 Fortalezas</h3>
@@ -154,7 +144,6 @@ export default function Coaching() {
         </div>
       </div>
 
-      {/* Patron de errores */}
       {data.patron_errores && (
         <div className="coaching-card coaching-pattern">
           <h3 className="coaching-section-title accent">🔍 Patrón de Errores Recurrentes</h3>
@@ -162,7 +151,6 @@ export default function Coaching() {
         </div>
       )}
 
-      {/* Mision semanal */}
       {data.mision_semanal && (
         <div className="coaching-card coaching-mission">
           <div className="coaching-mission-badge">MISIÓN SEMANAL</div>
@@ -181,7 +169,6 @@ export default function Coaching() {
         </div>
       )}
 
-      {/* Sweet spot + Proximo objetivo */}
       <div className="coaching-grid">
         {data.sweet_spot && (
           <div className="coaching-card coaching-sweetspot">

@@ -1,18 +1,16 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import * as api from './api'
-import { DEMO_DATA, getDemoThumbUrl, isDemoMode } from './demo-data'
 import Analytics from './Analytics'
 import './analytics.css'
 import Coaching from './Coaching'
 import './coaching.css'
 
-const CAT_ICONS = { paisajes: '🏔️', mascotas: '🐾', arquitectura: '🏛️', personas: '👤', comida: '🍽️', otras: '📁', todas: '✨' }
-const CATEGORIES = ['todas', 'paisajes', 'mascotas', 'arquitectura', 'personas', 'comida', 'otras']
-
-function getThumbUrl(fileId, index) {
-  if (isDemoMode()) return getDemoThumbUrl(index)
-  return api.getDriveThumbUrl(fileId)
+const CAT_ICONS = {
+  paisajes: '🏔️', mascotas: '🐾', arquitectura: '🏛️',
+  personas: '👤', comida: '🍽️', otras: '📁', todas: '✨',
 }
+const CATEGORIES = ['todas', 'paisajes', 'mascotas', 'arquitectura', 'personas', 'comida', 'otras']
+const PAGE_SIZE = 30
 
 // ==========================================
 // HOOKS
@@ -73,9 +71,14 @@ function LazyImage({ src, alt }) {
       {isVisible && !error && (
         <img
           src={src} alt={alt}
+          loading="lazy"
           onLoad={() => setLoaded(true)}
           onError={() => setError(true)}
-          style={{ opacity: loaded ? 1 : 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'opacity 0.3s ease', background: 'var(--surface2)' }}
+          style={{
+            opacity: loaded ? 1 : 0, width: '100%', height: '100%',
+            objectFit: 'cover', display: 'block',
+            transition: 'opacity 0.3s ease', background: 'var(--surface2)',
+          }}
         />
       )}
       {error && (
@@ -123,8 +126,13 @@ export default function App() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState({ msg: '', visible: false, err: false })
-  const [fromCache, setFromCache] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
+
+  // Pagination state
+  const [reviewedPage, setReviewedPage] = useState(1)
+  const [reviewedTotal, setReviewedTotal] = useState(0)
+  const [reviewedHasMore, setReviewedHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
@@ -137,30 +145,17 @@ export default function App() {
     setTimeout(() => setToast(t => ({ ...t, visible: false })), 3500)
   }, [])
 
-  // ===== LOAD DATA (cache-first) =====
+  // ===== LOAD DATA =====
   const loadData = useCallback(async (showLoadingState = true) => {
     try {
-      if (isDemoMode()) {
-        setPending(DEMO_DATA.pending)
-        setReviewed(DEMO_DATA.reviewed)
-        setLoading(false)
-        return
-      }
+      if (showLoadingState) setLoading(true)
 
-      if (showLoadingState) {
-        const cached = api.getCachedData()
-        if (cached) {
-          setPending(cached.pending || [])
-          setReviewed(cached.reviewed || [])
-          setLoading(false)
-          setFromCache(true)
-        }
-      }
-
-      const data = await api.fetchGalleryData()
+      const data = await api.fetchGalleryData(1, PAGE_SIZE)
       setPending(data.pending || [])
       setReviewed(data.reviewed || [])
-      setFromCache(false)
+      setReviewedTotal(data.reviewedTotal || 0)
+      setReviewedHasMore(data.reviewedHasMore || false)
+      setReviewedPage(1)
       setLastUpdated(new Date())
     } catch (e) {
       showToast('Error cargando datos: ' + e.message, true)
@@ -171,6 +166,25 @@ export default function App() {
   }, [showToast])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // ===== LOAD MORE REVIEWED =====
+  async function loadMoreReviewed() {
+    if (loadingMore || !reviewedHasMore) return
+    setLoadingMore(true)
+    try {
+      const nextPage = reviewedPage + 1
+      const data = await api.fetchMoreReviewed(nextPage, PAGE_SIZE)
+      const paginatedData = data.reviewed || data
+      const newItems = paginatedData.items || paginatedData
+      setReviewed(prev => [...prev, ...newItems])
+      setReviewedPage(nextPage)
+      setReviewedHasMore(paginatedData.hasMore ?? false)
+    } catch (e) {
+      showToast('Error cargando más fotos: ' + e.message, true)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   // ===== REFRESH =====
   function handleRefresh() {
@@ -219,11 +233,11 @@ export default function App() {
   }, [reviewed, category, debouncedSearch, sortBy])
 
   // ===== LIGHTBOX WITH DETAIL =====
-  async function openLightbox(photo, imgSrc) {
-    setLightbox({ photo, imgSrc })
+  async function openLightbox(photo) {
+    setLightbox({ photo })
     setLightboxDetail(null)
 
-    if (photo.score != null && !isDemoMode()) {
+    if (photo.score != null) {
       setDetailLoading(true)
       try {
         const detail = await api.fetchPhotoDetail(photo.filename)
@@ -242,7 +256,7 @@ export default function App() {
       const ni = idx + dir
       if (ni >= 0 && ni < items.length) {
         const img = new Image()
-        img.src = getThumbUrl(items[ni].fileId, ni)?.replace('w400', 'w1200')
+        img.src = api.getHighResUrl(items[ni])
       }
     })
   }
@@ -254,8 +268,7 @@ export default function App() {
     const idx = items.findIndex(p => p.filename === lightbox.photo.filename)
     const newIdx = idx + dir
     if (newIdx < 0 || newIdx >= items.length) return
-    const newPhoto = items[newIdx]
-    openLightbox(newPhoto, getThumbUrl(newPhoto.fileId, newIdx))
+    openLightbox(items[newIdx])
   }
 
   // ===== TOUCH SWIPE =====
@@ -295,8 +308,7 @@ export default function App() {
     let ok = 0, errors = 0
     for (const fn of filenames) {
       try {
-        if (isDemoMode()) await new Promise(r => setTimeout(r, 1500))
-        else await api.reviewOnePhoto(fn)
+        await api.reviewOnePhoto(fn)
         ok++
       } catch (e) {
         errors++
@@ -311,7 +323,7 @@ export default function App() {
     let msg = `✅ ${ok} foto(s) analizadas`
     if (errors) msg += ` · ⚠️ ${errors} error(es)`
     showToast(msg)
-    if (!isDemoMode()) loadData(false)
+    loadData(false)
   }
 
   function handleDiscard() {
@@ -326,13 +338,20 @@ export default function App() {
         setSelected({})
         fns.forEach(fn => setRemoving(prev => ({ ...prev, [fn]: true })))
         try {
-          if (!isDemoMode()) await api.discardPhotos(fns)
-          await new Promise(r => setTimeout(r, 600))
-          setPending(prev => prev.filter(p => !fns.includes(p.filename)))
-          setReviewed(prev => prev.filter(p => !fns.includes(p.filename)))
+          const result = await api.discardPhotos(fns)
+          await new Promise(r => setTimeout(r, 400))
+          // Remover del state local
+          const discardedSet = new Set(result.details?.ok || fns)
+          setPending(prev => prev.filter(p => !discardedSet.has(p.filename)))
+          setReviewed(prev => prev.filter(p => !discardedSet.has(p.filename)))
           setRemoving({})
-          showToast(`🗑️ ${fns.length} foto(s) descartadas`)
-          if (!isDemoMode()) loadData(false)
+
+          const errCount = result.errors || 0
+          if (errCount > 0) {
+            showToast(`🗑️ ${result.discarded} descartadas · ⚠️ ${errCount} error(es)`, errCount > 0)
+          } else {
+            showToast(`🗑️ ${result.discarded} foto(s) descartadas`)
+          }
         } catch (e) {
           setRemoving({})
           showToast('Error: ' + e.message, true)
@@ -353,13 +372,13 @@ export default function App() {
         setSelected({})
         fns.forEach(fn => setRemoving(prev => ({ ...prev, [fn]: true })))
         try {
-          if (!isDemoMode()) await api.deletePhotos(fns)
-          await new Promise(r => setTimeout(r, 600))
-          setPending(prev => prev.filter(p => !fns.includes(p.filename)))
-          setReviewed(prev => prev.filter(p => !fns.includes(p.filename)))
+          const result = await api.deletePhotos(fns)
+          await new Promise(r => setTimeout(r, 400))
+          const deletedSet = new Set(result.details?.ok || fns)
+          setPending(prev => prev.filter(p => !deletedSet.has(p.filename)))
+          setReviewed(prev => prev.filter(p => !deletedSet.has(p.filename)))
           setRemoving({})
-          showToast(`💀 ${fns.length} foto(s) eliminadas permanentemente`)
-          if (!isDemoMode()) loadData(false)
+          showToast(`💀 ${result.deleted} foto(s) eliminadas permanentemente`)
         } catch (e) {
           setRemoving({})
           showToast('Error: ' + e.message, true)
@@ -393,6 +412,7 @@ export default function App() {
   })
 
   // ===== COMPUTED =====
+  const totalReviewed = reviewedTotal || reviewed.length
   const avg = reviewed.length > 0
     ? (reviewed.reduce((s, r) => s + r.score, 0) / reviewed.length).toFixed(1)
     : '—'
@@ -421,13 +441,8 @@ export default function App() {
                 <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
               </svg>
             </button>
-            {fromCache && <div className="cache-badge">⚡ cache</div>}
-            {lastUpdatedStr && !fromCache && <div className="updated-badge">{lastUpdatedStr}</div>}
-            {isDemoMode() ? (
-              <div className="camera-badge demo-badge">⚡ Modo Demo</div>
-            ) : (
-              <div className="camera-badge">◉ Sony A7V · 20mm f/1.8</div>
-            )}
+            {lastUpdatedStr && <div className="updated-badge">{lastUpdatedStr}</div>}
+            <div className="camera-badge">◉ Sony A7V · 20mm f/1.8</div>
           </div>
         </div>
       </header>
@@ -439,7 +454,7 @@ export default function App() {
           <div className="stat-label">Pendientes</div>
         </div>
         <div className="stat-card clickable" style={{ animationDelay: '80ms' }} onClick={() => { setTab('reviewed'); clearSelection() }}>
-          <div className="stat-value" style={{ color: 'var(--accent)' }}>{reviewed.length}</div>
+          <div className="stat-value" style={{ color: 'var(--accent)' }}>{totalReviewed}</div>
           <div className="stat-label">Revisadas</div>
         </div>
         <div className="stat-card" style={{ animationDelay: '160ms' }}>
@@ -460,7 +475,7 @@ export default function App() {
             📥 Pendientes <span className="count">{pending.length}</span>
           </button>
           <button className={`tab ${tab === 'reviewed' ? 'active' : ''}`} onClick={() => { setTab('reviewed'); clearSelection() }}>
-            ✅ Revisadas <span className="count">{reviewed.length}</span>
+            ✅ Revisadas <span className="count">{totalReviewed}</span>
           </button>
           <button className={`tab ${tab === 'analytics' ? 'active' : ''}`} onClick={() => { setTab('analytics'); clearSelection() }}>
             📊 Analytics
@@ -521,8 +536,8 @@ export default function App() {
           <PhotoCard key={p.filename} photo={p} index={i} tab="pending"
             isSelected={!!selected[p.filename]} isProcessing={!!processing[p.filename]} isRemoving={!!removing[p.filename]}
             onToggle={toggleSelect}
-            onView={photo => openLightbox(photo, getThumbUrl(p.fileId, i))}
-            thumbUrl={getThumbUrl(p.fileId, i)} onTagClick={setSearch} />
+            onView={openLightbox}
+            onTagClick={setSearch} />
         ))}
 
         {!loading && tab === 'pending' && pending.length === 0 && (
@@ -537,8 +552,8 @@ export default function App() {
           <PhotoCard key={p.filename} photo={p} index={i} tab="reviewed"
             isSelected={!!selected[p.filename]} isProcessing={false} isRemoving={!!removing[p.filename]}
             onToggle={toggleSelect}
-            onView={photo => openLightbox(photo, getThumbUrl(p.fileId, i))}
-            thumbUrl={getThumbUrl(p.fileId, i)} onTagClick={tag => { setSearch(tag); setTab('reviewed') }} />
+            onView={openLightbox}
+            onTagClick={tag => { setSearch(tag); setTab('reviewed') }} />
         ))}
 
         {!loading && tab === 'reviewed' && filteredReviewed.length === 0 && (
@@ -550,13 +565,34 @@ export default function App() {
         )}
       </div>
 
-            {/* ANALYTICS */}
+      {/* LOAD MORE */}
+      {!loading && tab === 'reviewed' && reviewedHasMore && !debouncedSearch && category === 'todas' && (
+        <div className="load-more-wrap">
+          <button className="load-more-btn" onClick={loadMoreReviewed} disabled={loadingMore}>
+            {loadingMore ? (
+              <>
+                <div className="spinner-ring small" />
+                <span>Cargando...</span>
+              </>
+            ) : (
+              <>
+                <span>Cargar más fotos</span>
+                <span className="load-more-count">
+                  {reviewed.length} de {reviewedTotal}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* ANALYTICS */}
       {tab === 'analytics' && (
-  <>
-    <Analytics />
-    <Coaching />
-  </>
-)}
+        <>
+          <Analytics />
+          <Coaching />
+        </>
+      )}
 
       {/* TOOLBAR */}
       <div className={`toolbar ${selectedCount > 0 ? 'visible' : ''}`}>
@@ -564,6 +600,9 @@ export default function App() {
         <div className="toolbar-btns">
           <button className="toolbar-btn cancel" onClick={clearSelection}>Cancelar</button>
           <button className="toolbar-btn warn" onClick={handleDiscard}>🗑️ Descartar</button>
+          {tab === 'reviewed' && (
+            <button className="toolbar-btn danger" onClick={handleDelete}>💀 Eliminar</button>
+          )}
           {tab === 'pending' && (
             <button className="toolbar-btn primary" onClick={handleAnalyze}>🤖 Analizar con IA</button>
           )}
@@ -581,7 +620,7 @@ export default function App() {
             <button className="lightbox-close" onClick={() => setLightbox(null)}>✕</button>
             <div className="lb-layout">
               <div className="lb-image-wrap">
-                <img src={lightbox.imgSrc?.replace('w400', 'w1200')} alt={lightbox.photo.filename} />
+                <img src={api.getHighResUrl(lightbox.photo)} alt={lightbox.photo.filename} />
               </div>
               <div className="lb-detail">
                 <h2 className="lb-filename">{lightbox.photo.filename}</h2>
@@ -645,13 +684,13 @@ export default function App() {
 
                 <div className="lb-actions">
                   {lightbox.photo.fileId && (
-                    <a className="dl-chip" href={isDemoMode() ? '#' : api.getDriveDownloadUrl(lightbox.photo.fileId)} target="_blank" rel="noreferrer">📷 JPG</a>
+                    <a className="dl-chip" href={api.getDriveDownloadUrl(lightbox.photo.fileId)} target="_blank" rel="noreferrer">📷 JPG</a>
                   )}
                   {(lightbox.photo.rawFileId || lightboxDetail?.rawFileId) && (
-                    <a className="dl-chip raw-chip" href={isDemoMode() ? '#' : api.getDriveDownloadUrl(lightbox.photo.rawFileId || lightboxDetail.rawFileId)} target="_blank" rel="noreferrer">🎞️ RAW</a>
+                    <a className="dl-chip raw-chip" href={api.getDriveDownloadUrl(lightbox.photo.rawFileId || lightboxDetail.rawFileId)} target="_blank" rel="noreferrer">🎞️ RAW</a>
                   )}
                   {lightbox.photo.reviewId && (
-                    <a className="dl-chip" href={isDemoMode() ? '#' : api.getReviewDocUrl(lightbox.photo.reviewId)} target="_blank" rel="noreferrer">📝 Review Doc</a>
+                    <a className="dl-chip" href={api.getReviewDocUrl(lightbox.photo.reviewId)} target="_blank" rel="noreferrer">📝 Review Doc</a>
                   )}
                 </div>
 
@@ -688,9 +727,10 @@ export default function App() {
 // ==========================================
 // PHOTO CARD
 // ==========================================
-function PhotoCard({ photo, index, tab, isSelected, isProcessing, isRemoving, onToggle, onView, thumbUrl, onTagClick }) {
+function PhotoCard({ photo, index, tab, isSelected, isProcessing, isRemoving, onToggle, onView, onTagClick }) {
   const score = photo.score || 0
   const scoreClass = score >= 7 ? 'high' : score >= 5 ? 'mid' : 'low'
+  const thumbUrl = api.getThumbUrl(photo)
 
   return (
     <div
@@ -750,10 +790,10 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isRemoving, on
           <span className="card-date">{photo.fecha}</span>
           <div className="dl-actions">
             {photo.fileId && (
-              <a className="dl-chip" href={isDemoMode() ? '#' : api.getDriveDownloadUrl(photo.fileId)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>📷 JPG</a>
+              <a className="dl-chip" href={api.getDriveDownloadUrl(photo.fileId)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>📷 JPG</a>
             )}
             {photo.rawFileId && (
-              <a className="dl-chip raw-chip" href={isDemoMode() ? '#' : api.getDriveDownloadUrl(photo.rawFileId)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>🎞️ RAW</a>
+              <a className="dl-chip raw-chip" href={api.getDriveDownloadUrl(photo.rawFileId)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>🎞️ RAW</a>
             )}
           </div>
         </div>

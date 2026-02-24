@@ -2,61 +2,25 @@
 // API Client - Cloud Run Backend
 // ==========================================
 // Conecta con el backend en Cloud Run.
-// Fallback a GAS si Cloud Run no está configurado.
+// Sin GAS. Paginación. Batch POST.
 // ==========================================
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://photo-analyzer-agent-81488981381.southamerica-east1.run.app';
-const API_KEY = import.meta.env.VITE_API_KEY || 'd9aLhZ5SogBEZyse8rnTDrSSJWKqc3mv5OWbk1VpxsY';
-const GAS_URL = import.meta.env.VITE_GAS_URL || '';
+const BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL ||
+  'https://photo-analyzer-agent-81488981381.southamerica-east1.run.app';
+const API_KEY =
+  import.meta.env.VITE_API_KEY || 'd9aLhZ5SogBEZyse8rnTDrSSJWKqc3mv5OWbk1VpxsY';
 
-// Usar Cloud Run si hay URL válida
-const useCloudRun = !!BACKEND_URL && !BACKEND_URL.includes('XXXXX');
+const DEFAULT_PAGE_SIZE = 30;
 
-const CACHE_KEY = 'photoanalyzer_cache';
-const CACHE_TS_KEY = 'photoanalyzer_cache_ts';
-const CACHE_TTL = 5 * 60 * 1000;
+// ===== CLOUD RUN CALLS =====
 
-// ===== CACHE =====
-export function getCachedData() {
-  try {
-    const ts = localStorage.getItem(CACHE_TS_KEY);
-    const data = localStorage.getItem(CACHE_KEY);
-    if (!ts || !data) return null;
-    return JSON.parse(data);
-  } catch { return null; }
-}
-
-export async function fetchAnalytics() {
-  return useCloudRun
-    ? await cloudRunCall('/api/analytics')
-    : await gasCall({ action: 'analytics' });
-}
-
-export async function fetchCoaching() {
-  return useCloudRun
-    ? await cloudRunCall('/api/coaching')
-    : await gasCall({ action: 'coaching' });
-}
-
-function setCachedData(data) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    localStorage.setItem(CACHE_TS_KEY, Date.now().toString());
-  } catch {}
-}
-
-export function isCacheStale() {
-  try {
-    const ts = parseInt(localStorage.getItem(CACHE_TS_KEY) || '0');
-    return Date.now() - ts > CACHE_TTL;
-  } catch { return true; }
-}
-
-// ===== CLOUD RUN =====
-async function cloudRunCall(endpoint, params = {}) {
+async function cloudRunGet(endpoint, params = {}) {
   const url = new URL(`${BACKEND_URL}${endpoint}`);
   url.searchParams.set('key', API_KEY);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
+  });
 
   const response = await fetch(url.toString());
   const data = await response.json();
@@ -65,65 +29,92 @@ async function cloudRunCall(endpoint, params = {}) {
   return data.data;
 }
 
-// ===== GAS FALLBACK =====
-async function gasCall(params) {
-  if (!GAS_URL) return null;
-  const url = new URL(GAS_URL);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+async function cloudRunPost(endpoint, body = {}) {
+  const url = new URL(`${BACKEND_URL}${endpoint}`);
+  url.searchParams.set('key', API_KEY);
 
-  const response = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
-  const text = await response.text();
-  let jsonText = text;
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json();
 
-  if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) jsonText = match[0];
-    else throw new Error('Respuesta inesperada del servidor');
-  }
-
-  const data = JSON.parse(jsonText);
-  if (!data.ok) throw new Error(data.error || 'Error del servidor');
+  if (!data.ok) throw new Error(data.detail || 'Error del servidor');
   return data.data;
 }
 
-// ===== ENDPOINTS =====
+// ===== GALLERY DATA (paginada) =====
 
-export async function fetchGalleryData() {
-  const data = useCloudRun
-    ? await cloudRunCall('/api/data')
-    : await gasCall({ action: 'getData' });
-  if (data) setCachedData(data);
-  return data;
+export async function fetchGalleryData(page = 1, pageSize = DEFAULT_PAGE_SIZE) {
+  return cloudRunGet('/api/data', { page, page_size: pageSize });
 }
+
+export async function fetchMoreReviewed(page, pageSize = DEFAULT_PAGE_SIZE) {
+  return cloudRunGet('/api/data', { page, page_size: pageSize, tab: 'reviewed' });
+}
+
+// ===== PHOTO DETAIL =====
 
 export async function fetchPhotoDetail(filename) {
-  return useCloudRun
-    ? await cloudRunCall('/api/detail', { file: filename })
-    : await gasCall({ action: 'detail', file: filename });
+  return cloudRunGet('/api/detail', { file: filename });
 }
+
+// ===== REVIEW =====
 
 export async function reviewOnePhoto(filename) {
-  return useCloudRun
-    ? await cloudRunCall('/api/review', { file: filename })
-    : await gasCall({ action: 'reviewOne', file: filename });
+  return cloudRunGet('/api/review', { file: filename });
 }
+
+// ===== DISCARD (POST batch) =====
 
 export async function discardPhotos(filenames) {
-  return useCloudRun
-    ? await cloudRunCall('/api/discard', { files: filenames.join(',') })
-    : await gasCall({ action: 'discard', files: filenames.join(',') });
+  return cloudRunPost('/api/discard', { filenames });
 }
+
+// ===== DELETE (POST batch) =====
 
 export async function deletePhotos(filenames) {
-  return useCloudRun
-    ? await cloudRunCall('/api/delete', { files: filenames.join(',') })
-    : await gasCall({ action: 'delete', files: filenames.join(',') });
+  return cloudRunPost('/api/delete', { filenames });
 }
 
-// ===== HELPERS =====
+// ===== ANALYTICS & COACHING =====
 
-export function getDriveThumbUrl(fileId, size = 400) {
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size}`;
+export async function fetchAnalytics() {
+  return cloudRunGet('/api/analytics');
+}
+
+export async function fetchCoaching() {
+  return cloudRunGet('/api/coaching');
+}
+
+// ===== CACHE INVALIDATION =====
+
+export async function invalidateCache() {
+  return cloudRunPost('/api/cache/invalidate');
+}
+
+// ===== URL HELPERS =====
+
+/**
+ * Retorna la URL del thumbnail.
+ * Prioriza thumbUrl de GCS (viene del backend).
+ * Fallback a Google Drive thumbnail.
+ */
+export function getThumbUrl(photo, size = 400) {
+  if (photo.thumbUrl) return photo.thumbUrl;
+  if (photo.fileId) return `https://drive.google.com/thumbnail?id=${photo.fileId}&sz=w${size}`;
+  return '';
+}
+
+/**
+ * Retorna URL del thumbnail en alta resolución para lightbox.
+ */
+export function getHighResUrl(photo) {
+  // Para lightbox: usar Drive a resolución mayor (GCS thumbs son 400px)
+  if (photo.fileId) return `https://drive.google.com/thumbnail?id=${photo.fileId}&sz=w1200`;
+  if (photo.thumbUrl) return photo.thumbUrl;
+  return '';
 }
 
 export function getDriveDownloadUrl(fileId) {
@@ -134,14 +125,6 @@ export function getReviewDocUrl(reviewId) {
   return `https://docs.google.com/document/d/${reviewId}/edit`;
 }
 
-export function isDemoMode() {
-  return false;
-}
-
 export function isConfigured() {
-  return useCloudRun || !!GAS_URL;
-}
-
-export function getBackendType() {
-  return useCloudRun ? 'cloud-run' : 'gas';
+  return !!BACKEND_URL;
 }
