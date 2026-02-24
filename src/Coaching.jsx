@@ -6,20 +6,19 @@ const WEAKNESS_ICONS = ['🔧', '📐', '💡', '🎨', '📷']
 
 const COACHING_CACHE_KEY = 'photoanalyzer_coaching'
 
-export default function Coaching({ data, setData }) {
+export default function Coaching() {
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   // Load from localStorage on mount
-// Load from localStorage on mount
   useEffect(() => {
-    if (!data) {
-      try {
-        const cached = localStorage.getItem(COACHING_CACHE_KEY)
-        if (cached) setData(JSON.parse(cached))
-      } catch {}
-    }
+    try {
+      const cached = localStorage.getItem(COACHING_CACHE_KEY)
+      if (cached) setData(JSON.parse(cached))
+    } catch {}
   }, [])
+
   async function loadCoaching() {
     setLoading(true)
     setError(null)
@@ -88,7 +87,7 @@ export default function Coaching({ data, setData }) {
       <div className="coaching-header">
         <div className="coaching-header-left">
           <h2 className="coaching-main-title">🤖 AI Photo Coaching</h2>
-          <p className="coaching-main-sub">Análisis personalizado basado en tus {data.fortalezas?.length + data.debilidades?.length || 0}+ patrones detectados</p>
+          <p className="coaching-main-sub">Análisis personalizado basado en tus {(data.fortalezas?.length || 0) + (data.debilidades?.length || 0)}+ patrones detectados</p>
         </div>
         <button className="coaching-refresh-btn" onClick={loadCoaching}>
           🔄 Regenerar
