@@ -4,10 +4,21 @@ import * as api from './api'
 const STRENGTH_ICONS = ['💪', '🎯', '✨', '🔥', '⭐']
 const WEAKNESS_ICONS = ['🔧', '📐', '💡', '🎨', '📷']
 
-export default function Coaching() {
-  const [data, setData] = useState(null)
+const COACHING_CACHE_KEY = 'photoanalyzer_coaching'
+
+export default function Coaching({ data, setData }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  // Load from localStorage on mount
+  useState(() => {
+    if (!data) {
+      try {
+        const cached = localStorage.getItem(COACHING_CACHE_KEY)
+        if (cached) setData(JSON.parse(cached))
+      } catch {}
+    }
+  })
 
   async function loadCoaching() {
     setLoading(true)
@@ -15,6 +26,7 @@ export default function Coaching() {
     try {
       const result = await api.fetchCoaching()
       setData(result)
+      localStorage.setItem(COACHING_CACHE_KEY, JSON.stringify(result))
     } catch (e) {
       setError(e.message)
     } finally {
