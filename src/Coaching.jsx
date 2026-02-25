@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react'
 import * as api from './api'
+import { subscribeCoaching, saveCoaching } from './firebase'
 
 const STRENGTH_ICONS = ['💪', '🎯', '✨', '🔥', '⭐']
 const WEAKNESS_ICONS = ['🔧', '📐', '💡', '🎨', '📷']
-
-const COACHING_CACHE_KEY = 'photoanalyzer_coaching'
 
 export default function Coaching() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [initialLoad, setInitialLoad] = useState(true)
 
+  // Real-time listener desde Firestore (reemplaza localStorage)
   useEffect(() => {
-    try {
-      const cached = localStorage.getItem(COACHING_CACHE_KEY)
-      if (cached) setData(JSON.parse(cached))
-    } catch {}
+    const unsub = subscribeCoaching((coaching) => {
+      if (coaching) setData(coaching)
+      setInitialLoad(false)
+    })
+    return unsub
   }, [])
 
   async function loadCoaching() {
@@ -23,8 +25,8 @@ export default function Coaching() {
     setError(null)
     try {
       const result = await api.fetchCoaching()
-      setData(result)
-      localStorage.setItem(COACHING_CACHE_KEY, JSON.stringify(result))
+      await saveCoaching(result)
+      // No seteamos data acá — el onSnapshot lo hace automáticamente
     } catch (e) {
       setError(e.message)
     } finally {
@@ -32,6 +34,21 @@ export default function Coaching() {
     }
   }
 
+  // Estado inicial: cargando desde Firestore
+  if (initialLoad) {
+    return (
+      <div className="coaching">
+        <div className="coaching-loading">
+          <div className="coaching-loading-brain">🧠</div>
+          <div className="coaching-loading-ring" />
+          <p className="coaching-loading-text">Cargando...</p>
+          <p className="coaching-loading-sub">Conectando con Firestore</p>
+        </div>
+      </div>
+    )
+  }
+
+  // No hay coaching guardado: mostrar CTA
   if (!data && !loading && !error) {
     return (
       <div className="coaching">
@@ -52,6 +69,7 @@ export default function Coaching() {
     )
   }
 
+  // Generando coaching
   if (loading) {
     return (
       <div className="coaching">
@@ -65,6 +83,7 @@ export default function Coaching() {
     )
   }
 
+  // Error
   if (error) {
     return (
       <div className="coaching">
@@ -76,6 +95,7 @@ export default function Coaching() {
     )
   }
 
+  // Coaching cargado: render completo
   return (
     <div className="coaching">
       <div className="coaching-header">

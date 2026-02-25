@@ -12,6 +12,8 @@ import {
   onSnapshot,
   doc,
   getDoc,
+  setDoc,
+  serverTimestamp,
 } from 'firebase/firestore'
 import {
   getAuth,
@@ -148,6 +150,41 @@ export async function getPhotoDetail(filename) {
     return { ...docSnap.data(), filename: docSnap.id }
   }
   return null
+}
+
+// ==========================================
+// Coaching - Firestore persistence
+// ==========================================
+
+/**
+ * Escucha cambios en el documento de coaching en real-time.
+ * callback(data) - data es null si no existe.
+ */
+export function subscribeCoaching(callback) {
+  const docRef = doc(db, 'coaching', 'latest')
+  return onSnapshot(docRef, (snap) => {
+    if (snap.exists()) {
+      console.log('[Firestore] Coaching loaded from Firestore')
+      callback(snap.data())
+    } else {
+      callback(null)
+    }
+  }, (error) => {
+    console.error('[Firestore] Error en coaching listener:', error)
+    callback(null)
+  })
+}
+
+/**
+ * Guarda el resultado del coaching en Firestore.
+ */
+export async function saveCoaching(data) {
+  const docRef = doc(db, 'coaching', 'latest')
+  await setDoc(docRef, {
+    ...data,
+    generatedAt: serverTimestamp(),
+  })
+  console.log('[Firestore] Coaching saved to Firestore')
 }
 
 export { db, auth }
