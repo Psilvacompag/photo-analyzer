@@ -5,6 +5,8 @@ import Analytics from './Analytics'
 import './analytics.css'
 import Coaching from './Coaching'
 import './coaching.css'
+import Upload from './Upload'
+import './upload.css'
 
 const CAT_ICONS = {
   paisajes: '🏔️', mascotas: '🐾', arquitectura: '🏛️',

@@ -98,3 +98,11 @@ export function getRawDownloadUrl(photo) {
 export function isConfigured() {
   return !!BACKEND_URL
 }
+
+export async function getSignedUrl(filename, fileType) {
+  return cloudRunPost('/api/upload/signed-url', { filename, file_type: fileType })
+}
+
+export async function uploadComplete(filename, fileType) {
+  return cloudRunPost('/api/upload/complete', { filename, file_type: fileType })
+}
