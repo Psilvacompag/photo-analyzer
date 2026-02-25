@@ -4,8 +4,9 @@ import * as api from './api'
 const ACCEPTED_JPEG = '.jpg,.jpeg,.JPG,.JPEG'
 const ACCEPTED_RAW = '.arw,.ARW'
 
+// v2
 export default function Upload({ onComplete, showToast }) {
-  const [files, setFiles] = useState([]) // { file, type: 'jpeg'|'raw', status, progress }
+  const [files, setFiles] = useState([])
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const jpegInputRef = useRef(null)
@@ -23,7 +24,6 @@ export default function Upload({ onComplete, showToast }) {
     for (const file of newFiles) {
       const type = classifyFile(file)
       if (!type) continue
-      // Evitar duplicados
       if (files.some(f => f.file.name === file.name)) continue
       classified.push({ file, type, status: 'pending', progress: 0 })
     }
@@ -40,7 +40,6 @@ export default function Upload({ onComplete, showToast }) {
     setFiles([])
   }
 
-  // Drag & drop
   const handleDragOver = useCallback((e) => {
     e.preventDefault()
     setDragOver(true)
@@ -58,7 +57,6 @@ export default function Upload({ onComplete, showToast }) {
     addFiles(droppedFiles)
   }, [files])
 
-  // Upload
   async function handleUpload() {
     if (files.length === 0 || uploading) return
     setUploading(true)
@@ -70,14 +68,11 @@ export default function Upload({ onComplete, showToast }) {
       const entry = files[i]
       if (entry.status === 'done') continue
 
-      // Update status
       setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'uploading', progress: 0 } : f))
 
       try {
-        // 1. Get signed URL
         const signed = await api.getSignedUrl(entry.file.name, entry.type)
 
-        // 2. Upload directo a GCS
         setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, progress: 10 } : f))
 
         await new Promise((resolve, reject) => {
@@ -100,7 +95,6 @@ export default function Upload({ onComplete, showToast }) {
           xhr.send(entry.file)
         })
 
-        // 3. Notify backend (Drive copy)
         setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, progress: 95 } : f))
         await api.uploadComplete(entry.file.name, entry.type)
 
@@ -133,7 +127,6 @@ export default function Upload({ onComplete, showToast }) {
         <p className="upload-subtitle">Arrastra archivos JPG o ARW, o usa los botones</p>
       </div>
 
-      {/* Drop zone */}
       <div
         className={`upload-dropzone ${dragOver ? 'drag-over' : ''} ${files.length > 0 ? 'has-files' : ''}`}
         onDragOver={handleDragOver}
@@ -183,7 +176,6 @@ export default function Upload({ onComplete, showToast }) {
         )}
       </div>
 
-      {/* Buttons */}
       <div className="upload-actions">
         <div className="upload-add-btns">
           <button className="upload-add-btn jpeg" onClick={() => jpegInputRef.current?.click()}>
@@ -224,8 +216,4 @@ export default function Upload({ onComplete, showToast }) {
       </div>
     </div>
   )
-}
-/ /  
- f o r c e  
- r e b u i l d  
- 
+};
