@@ -63,6 +63,51 @@ function LoginScreen() {
 }
 
 // ==========================================
+// USER MENU
+// ==========================================
+function UserMenu({ user, onLogout }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  return (
+    <div className="user-menu-wrap" ref={menuRef}>
+      <button className="user-btn" onClick={() => setOpen(!open)} title={user.email}>
+        {user.photoURL ? (
+          <img src={user.photoURL} alt="" className="user-avatar" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="user-initial">{user.email[0].toUpperCase()}</span>
+        )}
+      </button>
+
+      {open && (
+        <div className="user-dropdown">
+          <div className="user-dropdown-header">
+            {user.photoURL && <img src={user.photoURL} alt="" className="user-dropdown-avatar" referrerPolicy="no-referrer" />}
+            <div className="user-dropdown-info">
+              <span className="user-dropdown-name">{user.displayName || 'Usuario'}</span>
+              <span className="user-dropdown-email">{user.email}</span>
+            </div>
+          </div>
+          <div className="user-dropdown-divider" />
+          <button className="user-dropdown-btn" onClick={() => { setOpen(false); onLogout() }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Cerrar sesión
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ==========================================
 // HOOKS
 // ==========================================
 function useDebounce(value, delay = 300) {
@@ -148,8 +193,7 @@ function ScoreBar({ score }) {
 // APP
 // ==========================================
 export default function App() {
-  // ===== AUTH STATE =====
-  const [user, setUser] = useState(undefined) // undefined = loading, null = not logged in
+  const [user, setUser] = useState(undefined)
   const [authLoading, setAuthLoading] = useState(true)
 
   useEffect(() => {
@@ -160,7 +204,6 @@ export default function App() {
     return unsub
   }, [])
 
-  // Show loading while checking auth
   if (authLoading) {
     return (
       <div className="login-screen">
@@ -172,12 +215,10 @@ export default function App() {
     )
   }
 
-  // Show login if not authenticated
   if (!user) {
     return <LoginScreen />
   }
 
-  // Authenticated → show gallery
   return <Gallery user={user} />
 }
 
@@ -191,6 +232,7 @@ function Gallery({ user }) {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState({})
   const [processing, setProcessing] = useState({})
+  // removing: { filename: 'discard' | 'delete' }
   const [removing, setRemoving] = useState({})
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('todas')
@@ -206,11 +248,12 @@ function Gallery({ user }) {
   const touchStartY = useRef(0)
   const debouncedSearch = useDebounce(search, 250)
   const selectedCount = Object.keys(selected).length
+  const removingCount = Object.keys(removing).length
 
   // ===== TOAST =====
   const showToast = useCallback((msg, err = false) => {
     setToast({ msg, visible: true, err })
-    setTimeout(() => setToast(t => ({ ...t, visible: false })), 3500)
+    setTimeout(() => setToast(t => ({ ...t, visible: false })), 4000)
   }, [])
 
   // ===== FIRESTORE REAL-TIME =====
@@ -229,12 +272,38 @@ function Gallery({ user }) {
       setPending(photos)
       pendingLoaded = true
       markLoaded()
+      // Clean removing state for photos that disappeared from Firestore
+      setRemoving(prev => {
+        const next = { ...prev }
+        const currentIds = new Set(photos.map(p => p.filename))
+        let changed = false
+        for (const fn of Object.keys(next)) {
+          if (!currentIds.has(fn)) {
+            delete next[fn]
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
     })
 
     const unsubReviewed = subscribeReviewed((photos) => {
       setReviewed(photos)
       reviewedLoaded = true
       markLoaded()
+      // Clean removing state for photos that disappeared
+      setRemoving(prev => {
+        const next = { ...prev }
+        const currentIds = new Set(photos.map(p => p.filename))
+        let changed = false
+        for (const fn of Object.keys(next)) {
+          if (!currentIds.has(fn)) {
+            delete next[fn]
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
     })
 
     const timeout = setTimeout(() => {
@@ -264,7 +333,7 @@ function Gallery({ user }) {
   function selectAll() {
     const items = tab === 'pending' ? pending : filteredReviewed
     const next = {}
-    items.forEach(p => { if (!processing[p.filename]) next[p.filename] = true })
+    items.forEach(p => { if (!processing[p.filename] && !removing[p.filename]) next[p.filename] = true })
     setSelected(next)
   }
 
@@ -377,21 +446,39 @@ function Gallery({ user }) {
     if (!fns.length) return
     setModal({
       icon: '🗑️', title: 'Descartar fotos',
-      message: `${fns.length} foto(s) se marcarán como descartadas. Podrás recuperarlas después.`,
+      message: `${fns.length} foto(s) se marcarán como descartadas.`,
       confirmLabel: 'Descartar', variant: 'warn',
       onConfirm: async () => {
         setModal(null)
+        // Mark cards as removing BEFORE clearing selection
+        const newRemoving = {}
+        fns.forEach(f => newRemoving[f] = 'discard')
+        setRemoving(prev => ({ ...prev, ...newRemoving }))
         setSelected({})
+        showToast(`🗑️ Descartando ${fns.length} foto(s)...`)
         try {
           const result = await api.discardPhotos(fns)
           const errCount = result.errors || 0
           if (errCount > 0) {
             showToast(`🗑️ ${result.discarded} descartadas · ⚠️ ${errCount} error(es)`, true)
+            // Clean removing state for errored ones
+            setRemoving(prev => {
+              const next = { ...prev }
+              fns.forEach(f => delete next[f])
+              return next
+            })
           } else {
             showToast(`🗑️ ${result.discarded} foto(s) descartadas`)
           }
+          // Firestore onSnapshot will clean removing state automatically
         } catch (e) {
           showToast('Error: ' + e.message, true)
+          // Revert removing state on error
+          setRemoving(prev => {
+            const next = { ...prev }
+            fns.forEach(f => delete next[f])
+            return next
+          })
         }
       }
     })
@@ -406,12 +493,22 @@ function Gallery({ user }) {
       confirmLabel: `Eliminar ${fns.length} foto(s)`, variant: 'danger',
       onConfirm: async () => {
         setModal(null)
+        // Mark cards as removing BEFORE clearing selection
+        const newRemoving = {}
+        fns.forEach(f => newRemoving[f] = 'delete')
+        setRemoving(prev => ({ ...prev, ...newRemoving }))
         setSelected({})
+        showToast(`💀 Eliminando ${fns.length} foto(s)...`)
         try {
           const result = await api.deletePhotos(fns)
           showToast(`💀 ${result.deleted} foto(s) eliminadas permanentemente`)
         } catch (e) {
           showToast('Error: ' + e.message, true)
+          setRemoving(prev => {
+            const next = { ...prev }
+            fns.forEach(f => delete next[f])
+            return next
+          })
         }
       }
     })
@@ -471,13 +568,7 @@ function Gallery({ user }) {
           <div className="header-right">
             <div className={`status-dot ${connected ? 'connected' : ''}`} title={connected ? 'Conectado a Firestore' : 'Conectando...'} />
             <div className="camera-badge">◉ Sony A7V · 20mm f/1.8</div>
-            <button className="user-btn" onClick={handleLogout} title={`Cerrar sesión (${user.email})`}>
-              {user.photoURL ? (
-                <img src={user.photoURL} alt="" className="user-avatar" referrerPolicy="no-referrer" />
-              ) : (
-                <span className="user-initial">{user.email[0].toUpperCase()}</span>
-              )}
-            </button>
+            <UserMenu user={user} onLogout={handleLogout} />
           </div>
         </div>
       </header>
@@ -569,7 +660,8 @@ function Gallery({ user }) {
 
         {!loading && tab === 'pending' && pending.map((p, i) => (
           <PhotoCard key={p.filename} photo={p} index={i} tab="pending"
-            isSelected={!!selected[p.filename]} isProcessing={!!processing[p.filename]} isRemoving={!!removing[p.filename]}
+            isSelected={!!selected[p.filename]} isProcessing={!!processing[p.filename]}
+            removingType={removing[p.filename] || null}
             onToggle={toggleSelect} onView={openLightbox} onTagClick={setSearch} />
         ))}
 
@@ -583,7 +675,8 @@ function Gallery({ user }) {
 
         {!loading && tab === 'reviewed' && filteredReviewed.map((p, i) => (
           <PhotoCard key={p.filename} photo={p} index={i} tab="reviewed"
-            isSelected={!!selected[p.filename]} isProcessing={false} isRemoving={!!removing[p.filename]}
+            isSelected={!!selected[p.filename]} isProcessing={false}
+            removingType={removing[p.filename] || null}
             onToggle={toggleSelect} onView={openLightbox}
             onTagClick={tag => { setSearch(tag); setTab('reviewed') }} />
         ))}
@@ -610,17 +703,26 @@ function Gallery({ user }) {
       )}
 
       {/* TOOLBAR */}
-      <div className={`toolbar ${selectedCount > 0 ? 'visible' : ''}`}>
-        <span className="toolbar-count">{selectedCount} seleccionada{selectedCount !== 1 ? 's' : ''}</span>
+      <div className={`toolbar ${selectedCount > 0 || removingCount > 0 ? 'visible' : ''}`}>
+        {removingCount > 0 ? (
+          <span className="toolbar-count removing-indicator">
+            <div className="spinner-ring small" />
+            Procesando {removingCount} foto(s)...
+          </span>
+        ) : (
+          <span className="toolbar-count">{selectedCount} seleccionada{selectedCount !== 1 ? 's' : ''}</span>
+        )}
         <div className="toolbar-btns">
-          <button className="toolbar-btn cancel" onClick={clearSelection}>Cancelar</button>
-          <button className="toolbar-btn warn" onClick={handleDiscard}>🗑️ Descartar</button>
-          {tab === 'reviewed' && (
-            <button className="toolbar-btn danger" onClick={handleDelete}>💀 Eliminar</button>
-          )}
-          {tab === 'pending' && (
-            <button className="toolbar-btn primary" onClick={handleAnalyze}>🤖 Analizar con IA</button>
-          )}
+          {removingCount === 0 && <>
+            <button className="toolbar-btn cancel" onClick={clearSelection}>Cancelar</button>
+            <button className="toolbar-btn warn" onClick={handleDiscard}>🗑️ Descartar</button>
+            {tab === 'reviewed' && (
+              <button className="toolbar-btn danger" onClick={handleDelete}>💀 Eliminar</button>
+            )}
+            {tab === 'pending' && (
+              <button className="toolbar-btn primary" onClick={handleAnalyze}>🤖 Analizar con IA</button>
+            )}
+          </>}
         </div>
       </div>
 
@@ -739,10 +841,14 @@ function Gallery({ user }) {
 // ==========================================
 // PHOTO CARD
 // ==========================================
-function PhotoCard({ photo, index, tab, isSelected, isProcessing, isRemoving, onToggle, onView, onTagClick }) {
+function PhotoCard({ photo, index, tab, isSelected, isProcessing, removingType, onToggle, onView, onTagClick }) {
   const score = photo.score || 0
   const scoreClass = score >= 7 ? 'high' : score >= 5 ? 'mid' : 'low'
   const thumbUrl = api.getThumbUrl(photo)
+  const isRemoving = !!removingType
+
+  const removingLabel = removingType === 'delete' ? 'Eliminando...' : 'Descartando...'
+  const removingIcon = removingType === 'delete' ? '💀' : '🗑️'
 
   return (
     <div
@@ -758,14 +864,21 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isRemoving, on
         {isSelected && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
       </div>
 
-      {tab === 'pending' && !isProcessing && <div className="badge pending-badge">PENDIENTE</div>}
+      {tab === 'pending' && !isProcessing && !isRemoving && <div className="badge pending-badge">PENDIENTE</div>}
       {isProcessing && (
         <div className="proc-overlay">
           <div className="spinner-ring" />
           <span className="proc-label">Analizando...</span>
         </div>
       )}
-      {photo.bestOf && <div className="badge best-badge">⭐ BEST OF</div>}
+      {isRemoving && (
+        <div className="removing-overlay">
+          <div className="removing-icon-pulse">{removingIcon}</div>
+          <span className="removing-label">{removingLabel}</span>
+          <div className="removing-progress" />
+        </div>
+      )}
+      {photo.bestOf && !isRemoving && <div className="badge best-badge">⭐ BEST OF</div>}
 
       <div className="card-img-wrap">
         <LazyImage src={thumbUrl} alt={photo.filename} />

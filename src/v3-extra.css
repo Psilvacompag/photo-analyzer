@@ -127,8 +127,12 @@
 }
 
 /* ==========================================
-   User Button (header)
+   User Menu (header dropdown)
    ========================================== */
+.user-menu-wrap {
+  position: relative;
+}
+
 .user-btn {
   background: none;
   border: 2px solid var(--border, #2a2a3a);
@@ -138,7 +142,7 @@
   padding: 0;
   cursor: pointer;
   overflow: hidden;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -147,6 +151,7 @@
 
 .user-btn:hover {
   border-color: var(--accent, #818cf8);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
 }
 
 .user-avatar {
@@ -160,4 +165,222 @@
   color: var(--accent, #818cf8);
   font-weight: 600;
   font-size: 0.85rem;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--surface, #16161e);
+  border: 1px solid var(--border, #2a2a3a);
+  border-radius: 0.75rem;
+  min-width: 260px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: dropdownIn 0.15s ease;
+  z-index: 100;
+  overflow: hidden;
+}
+
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.user-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.user-dropdown-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.user-dropdown-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.user-dropdown-name {
+  color: var(--text, #e4e4e7);
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-dropdown-email {
+  color: var(--muted, #71717a);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-dropdown-divider {
+  height: 1px;
+  background: var(--border, #2a2a3a);
+}
+
+.user-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: var(--muted, #71717a);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.user-dropdown-btn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--red, #ef4444);
+}
+
+.user-dropdown-btn svg {
+  flex-shrink: 0;
+}
+
+/* ==========================================
+   Card Removing Animation
+   ========================================== */
+.photo-card.removing {
+  animation: cardRemoving 0.6s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes cardRemoving {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: saturate(1);
+  }
+  40% {
+    opacity: 0.8;
+    transform: scale(0.98);
+    filter: saturate(0.3);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(0.95);
+    filter: saturate(0) brightness(0.7);
+  }
+}
+
+/* Removing overlay on card */
+.removing-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(10, 10, 15, 0.75);
+  backdrop-filter: blur(4px);
+  border-radius: inherit;
+}
+
+.removing-icon-pulse {
+  font-size: 2rem;
+  animation: iconPulse 1s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.7; }
+}
+
+.removing-label {
+  color: var(--text, #e4e4e7);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.removing-progress {
+  width: 60%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  position: relative;
+}
+
+.removing-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--accent, #818cf8), var(--red, #ef4444));
+  border-radius: 2px;
+  animation: progressSlide 1.5s ease-in-out infinite;
+}
+
+@keyframes progressSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ==========================================
+   Toolbar: removing indicator
+   ========================================== */
+.removing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.removing-indicator .spinner-ring.small {
+  width: 18px;
+  height: 18px;
+}
+
+/* ==========================================
+   Improved Toast
+   ========================================== */
+.toast-container {
+  position: fixed;
+  bottom: 5.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 0.75rem 1.25rem;
+  background: var(--surface, #16161e);
+  border: 1px solid var(--border, #2a2a3a);
+  border-radius: 0.75rem;
+  color: var(--text, #e4e4e7);
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.toast.error {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.12);
 }
