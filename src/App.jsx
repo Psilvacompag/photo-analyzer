@@ -657,6 +657,7 @@ function Gallery({ user }) {
       </div>
 
       {/* GRID */}
+      {tab === 'pending' && <Upload showToast={showToast} />}
       <div className="grid">
         {loading && Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={`skel-${i}`} index={i} />)}
 
