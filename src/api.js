@@ -13,20 +13,24 @@ const API_KEY =
 
 // ===== HTTP helpers =====
 
-async function cloudRunGet(endpoint, params = {}) {
+async function cloudRunGet(endpoint, params = {}, retries = 1) {
   const url = new URL(`${BACKEND_URL}${endpoint}`)
   url.searchParams.set('key', API_KEY)
   Object.entries(params).forEach(([k, v]) => {
     if (v !== undefined && v !== null) url.searchParams.set(k, String(v))
   })
   const response = await fetch(url.toString())
+  if (response.status === 503 && retries > 0) {
+    await new Promise(r => setTimeout(r, 1500))
+    return cloudRunGet(endpoint, params, retries - 1)
+  }
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   const data = await response.json()
   if (!data.ok) throw new Error(data.detail || 'Error del servidor')
   return data.data
 }
 
-async function cloudRunPost(endpoint, body = {}) {
+async function cloudRunPost(endpoint, body = {}, retries = 1) {
   const url = new URL(`${BACKEND_URL}${endpoint}`)
   url.searchParams.set('key', API_KEY)
   const response = await fetch(url.toString(), {
@@ -34,6 +38,10 @@ async function cloudRunPost(endpoint, body = {}) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
+  if (response.status === 503 && retries > 0) {
+    await new Promise(r => setTimeout(r, 1500))
+    return cloudRunPost(endpoint, body, retries - 1)
+  }
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   const data = await response.json()
   if (!data.ok) throw new Error(data.detail || 'Error del servidor')
