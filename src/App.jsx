@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { subscribePending, subscribeReviewed, getPhotoDetail } from './firebase'
 import * as api from './api'
 import Analytics from './Analytics'
 import './analytics.css'
@@ -10,7 +11,6 @@ const CAT_ICONS = {
   personas: '👤', comida: '🍽️', otras: '📁', todas: '✨',
 }
 const CATEGORIES = ['todas', 'paisajes', 'mascotas', 'arquitectura', 'personas', 'comida', 'otras']
-const PAGE_SIZE = 30
 
 // ==========================================
 // HOOKS
@@ -69,24 +69,12 @@ function LazyImage({ src, alt }) {
     <div ref={ref} style={{ width: '100%', height: '100%', position: 'relative' }}>
       {!loaded && <div className="skeleton-img shimmer" style={{ position: 'absolute', inset: 0 }} />}
       {isVisible && !error && (
-        <img
-          src={src} alt={alt}
-          loading="lazy"
-          onLoad={() => setLoaded(true)}
-          onError={() => setError(true)}
-          style={{
-            opacity: loaded ? 1 : 0, width: '100%', height: '100%',
-            objectFit: 'cover', display: 'block',
-            transition: 'opacity 0.3s ease', background: 'var(--surface2)',
-          }}
+        <img src={src} alt={alt} loading="lazy"
+          onLoad={() => setLoaded(true)} onError={() => setError(true)}
+          style={{ opacity: loaded ? 1 : 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'opacity 0.3s ease', background: 'var(--surface2)' }}
         />
       )}
-      {error && (
-        <div className="img-error">
-          <span>📷</span>
-          <small>No se pudo cargar</small>
-        </div>
-      )}
+      {error && <div className="img-error"><span>📷</span><small>No se pudo cargar</small></div>}
     </div>
   )
 }
@@ -114,7 +102,6 @@ export default function App() {
   const [pending, setPending] = useState([])
   const [reviewed, setReviewed] = useState([])
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [selected, setSelected] = useState({})
   const [processing, setProcessing] = useState({})
   const [removing, setRemoving] = useState({})
@@ -126,13 +113,7 @@ export default function App() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState({ msg: '', visible: false, err: false })
-  const [lastUpdated, setLastUpdated] = useState(null)
-
-  // Pagination state
-  const [reviewedPage, setReviewedPage] = useState(1)
-  const [reviewedTotal, setReviewedTotal] = useState(0)
-  const [reviewedHasMore, setReviewedHasMore] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
+  const [connected, setConnected] = useState(false)
 
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
@@ -145,53 +126,46 @@ export default function App() {
     setTimeout(() => setToast(t => ({ ...t, visible: false })), 3500)
   }, [])
 
-  // ===== LOAD DATA =====
-  const loadData = useCallback(async (showLoadingState = true) => {
-    try {
-      if (showLoadingState) setLoading(true)
+  // ===== FIRESTORE REAL-TIME =====
+  useEffect(() => {
+    let pendingLoaded = false
+    let reviewedLoaded = false
 
-      const data = await api.fetchGalleryData(1, PAGE_SIZE)
-      setPending(data.pending || [])
-      setReviewed(data.reviewed || [])
-      setReviewedTotal(data.reviewedTotal || 0)
-      setReviewedHasMore(data.reviewedHasMore || false)
-      setReviewedPage(1)
-      setLastUpdated(new Date())
-    } catch (e) {
-      showToast('Error cargando datos: ' + e.message, true)
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
+    const markLoaded = () => {
+      if (pendingLoaded && reviewedLoaded) {
+        setLoading(false)
+        setConnected(true)
+      }
+    }
+
+    // Suscribirse a fotos pendientes
+    const unsubPending = subscribePending((photos) => {
+      setPending(photos)
+      pendingLoaded = true
+      markLoaded()
+    })
+
+    // Suscribirse a fotos revisadas
+    const unsubReviewed = subscribeReviewed((photos) => {
+      setReviewed(photos)
+      reviewedLoaded = true
+      markLoaded()
+    })
+
+    // Timeout de seguridad
+    const timeout = setTimeout(() => {
+      if (!pendingLoaded || !reviewedLoaded) {
+        setLoading(false)
+        showToast('Conexión lenta con Firestore...', true)
+      }
+    }, 10000)
+
+    return () => {
+      unsubPending()
+      unsubReviewed()
+      clearTimeout(timeout)
     }
   }, [showToast])
-
-  useEffect(() => { loadData() }, [loadData])
-
-  // ===== LOAD MORE REVIEWED =====
-  async function loadMoreReviewed() {
-    if (loadingMore || !reviewedHasMore) return
-    setLoadingMore(true)
-    try {
-      const nextPage = reviewedPage + 1
-      const data = await api.fetchMoreReviewed(nextPage, PAGE_SIZE)
-      const paginatedData = data.reviewed || data
-      const newItems = paginatedData.items || paginatedData
-      setReviewed(prev => [...prev, ...newItems])
-      setReviewedPage(nextPage)
-      setReviewedHasMore(paginatedData.hasMore ?? false)
-    } catch (e) {
-      showToast('Error cargando más fotos: ' + e.message, true)
-    } finally {
-      setLoadingMore(false)
-    }
-  }
-
-  // ===== REFRESH =====
-  function handleRefresh() {
-    if (refreshing) return
-    setRefreshing(true)
-    loadData(false)
-  }
 
   // ===== SELECTION =====
   function toggleSelect(fn) {
@@ -212,7 +186,7 @@ export default function App() {
 
   function clearSelection() { setSelected({}) }
 
-  // ===== FILTER & SORT (memoized) =====
+  // ===== FILTER & SORT =====
   const filteredReviewed = useMemo(() => {
     let items = [...reviewed]
     if (category !== 'todas') items = items.filter(r => r.category === category)
@@ -225,22 +199,23 @@ export default function App() {
         (r.resumen || '').toLowerCase().includes(q)
       )
     }
-    if (sortBy === 'best') items.sort((a, b) => b.score - a.score)
-    else if (sortBy === 'worst') items.sort((a, b) => a.score - b.score)
+    if (sortBy === 'best') items.sort((a, b) => (b.score || 0) - (a.score || 0))
+    else if (sortBy === 'worst') items.sort((a, b) => (a.score || 0) - (b.score || 0))
     else if (sortBy === 'oldest') items.sort((a, b) => a.filename.localeCompare(b.filename))
     else items.sort((a, b) => b.filename.localeCompare(a.filename))
     return items
   }, [reviewed, category, debouncedSearch, sortBy])
 
-  // ===== LIGHTBOX WITH DETAIL =====
+  // ===== LIGHTBOX =====
   async function openLightbox(photo) {
     setLightbox({ photo })
     setLightboxDetail(null)
 
-    if (photo.score != null) {
+    if (photo.score) {
       setDetailLoading(true)
       try {
-        const detail = await api.fetchPhotoDetail(photo.filename)
+        // Leer detalle directo de Firestore
+        const detail = await getPhotoDetail(photo.filename)
         setLightboxDetail(detail)
       } catch (e) {
         console.log('Detail load failed:', e)
@@ -249,7 +224,7 @@ export default function App() {
       }
     }
 
-    // Preload adjacent images
+    // Preload adjacentes
     const items = tab === 'pending' ? pending : filteredReviewed
     const idx = items.findIndex(p => p.filename === photo.filename)
     ;[-1, 1].forEach(dir => {
@@ -261,7 +236,6 @@ export default function App() {
     })
   }
 
-  // ===== LIGHTBOX NAVIGATION =====
   function navigateLightbox(dir) {
     if (!lightbox) return
     const items = tab === 'pending' ? pending : filteredReviewed
@@ -272,16 +246,11 @@ export default function App() {
   }
 
   // ===== TOUCH SWIPE =====
-  function handleTouchStart(e) {
-    touchStartX.current = e.touches[0].clientX
-    touchStartY.current = e.touches[0].clientY
-  }
+  function handleTouchStart(e) { touchStartX.current = e.touches[0].clientX; touchStartY.current = e.touches[0].clientY }
   function handleTouchEnd(e) {
     const dx = e.changedTouches[0].clientX - touchStartX.current
     const dy = e.changedTouches[0].clientY - touchStartY.current
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
-      navigateLightbox(dx > 0 ? -1 : 1)
-    }
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) navigateLightbox(dx > 0 ? -1 : 1)
   }
 
   // ===== ACTIONS =====
@@ -308,22 +277,20 @@ export default function App() {
     let ok = 0, errors = 0
     for (const fn of filenames) {
       try {
-        await api.reviewOnePhoto(fn)
+        await api.reviewPhoto(fn)
         ok++
       } catch (e) {
         errors++
         showToast(`⚠️ Error en ${fn}`, true)
       }
       setProcessing(prev => { const n = { ...prev }; delete n[fn]; return n })
-      setRemoving(prev => ({ ...prev, [fn]: true }))
-      await new Promise(r => setTimeout(r, 600))
-      setPending(prev => prev.filter(p => p.filename !== fn))
-      setRemoving(prev => { const n = { ...prev }; delete n[fn]; return n })
+      // No necesitamos remover manualmente del array —
+      // Firestore onSnapshot lo hace automáticamente cuando
+      // el status cambia de pending a reviewed
     }
     let msg = `✅ ${ok} foto(s) analizadas`
     if (errors) msg += ` · ⚠️ ${errors} error(es)`
     showToast(msg)
-    loadData(false)
   }
 
   function handleDiscard() {
@@ -331,29 +298,21 @@ export default function App() {
     if (!fns.length) return
     setModal({
       icon: '🗑️', title: 'Descartar fotos',
-      message: `${fns.length} foto(s) se moverán a descartadas (JPG + RAW). Podrás recuperarlas después.`,
+      message: `${fns.length} foto(s) se marcarán como descartadas. Podrás recuperarlas después.`,
       confirmLabel: 'Descartar', variant: 'warn',
       onConfirm: async () => {
         setModal(null)
         setSelected({})
-        fns.forEach(fn => setRemoving(prev => ({ ...prev, [fn]: true })))
         try {
           const result = await api.discardPhotos(fns)
-          await new Promise(r => setTimeout(r, 400))
-          // Remover del state local
-          const discardedSet = new Set(result.details?.ok || fns)
-          setPending(prev => prev.filter(p => !discardedSet.has(p.filename)))
-          setReviewed(prev => prev.filter(p => !discardedSet.has(p.filename)))
-          setRemoving({})
-
+          // Firestore onSnapshot remueve automáticamente
           const errCount = result.errors || 0
           if (errCount > 0) {
-            showToast(`🗑️ ${result.discarded} descartadas · ⚠️ ${errCount} error(es)`, errCount > 0)
+            showToast(`🗑️ ${result.discarded} descartadas · ⚠️ ${errCount} error(es)`, true)
           } else {
             showToast(`🗑️ ${result.discarded} foto(s) descartadas`)
           }
         } catch (e) {
-          setRemoving({})
           showToast('Error: ' + e.message, true)
         }
       }
@@ -365,22 +324,15 @@ export default function App() {
     if (!fns.length) return
     setModal({
       icon: '💀', title: 'Eliminar permanentemente',
-      message: `⚠️ ${fns.length} foto(s) serán ELIMINADAS permanentemente.\n\nSe borrarán: JPG, RAW y review del Sheet.\n\nEsta acción NO se puede deshacer.`,
+      message: `⚠️ ${fns.length} foto(s) serán ELIMINADAS permanentemente.\n\nSe borrarán de GCS y Firestore.\n\nEsta acción NO se puede deshacer.`,
       confirmLabel: `Eliminar ${fns.length} foto(s)`, variant: 'danger',
       onConfirm: async () => {
         setModal(null)
         setSelected({})
-        fns.forEach(fn => setRemoving(prev => ({ ...prev, [fn]: true })))
         try {
           const result = await api.deletePhotos(fns)
-          await new Promise(r => setTimeout(r, 400))
-          const deletedSet = new Set(result.details?.ok || fns)
-          setPending(prev => prev.filter(p => !deletedSet.has(p.filename)))
-          setReviewed(prev => prev.filter(p => !deletedSet.has(p.filename)))
-          setRemoving({})
           showToast(`💀 ${result.deleted} foto(s) eliminadas permanentemente`)
         } catch (e) {
-          setRemoving({})
           showToast('Error: ' + e.message, true)
         }
       }
@@ -401,7 +353,6 @@ export default function App() {
         if (e.key === 'ArrowRight') navigateLightbox(1)
       }
       if (!lightbox && !modal) {
-        if (e.key === 'r' || e.key === 'R') handleRefresh()
         if (e.key === '1') { setTab('pending'); clearSelection() }
         if (e.key === '2') { setTab('reviewed'); clearSelection() }
         if (e.key === '3') { setTab('analytics'); clearSelection() }
@@ -412,14 +363,10 @@ export default function App() {
   })
 
   // ===== COMPUTED =====
-  const totalReviewed = reviewedTotal || reviewed.length
   const avg = reviewed.length > 0
-    ? (reviewed.reduce((s, r) => s + r.score, 0) / reviewed.length).toFixed(1)
+    ? (reviewed.reduce((s, r) => s + (r.score || 0), 0) / reviewed.length).toFixed(1)
     : '—'
   const bestCount = reviewed.filter(r => r.bestOf).length
-  const lastUpdatedStr = lastUpdated
-    ? lastUpdated.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
-    : null
 
   // ===== RENDER =====
   return (
@@ -435,13 +382,7 @@ export default function App() {
             </div>
           </div>
           <div className="header-right">
-            <button className={`refresh-btn ${refreshing ? 'spinning' : ''}`} onClick={handleRefresh} title="Actualizar (R)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
-                <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
-              </svg>
-            </button>
-            {lastUpdatedStr && <div className="updated-badge">{lastUpdatedStr}</div>}
+            <div className={`status-dot ${connected ? 'connected' : ''}`} title={connected ? 'Conectado a Firestore' : 'Conectando...'} />
             <div className="camera-badge">◉ Sony A7V · 20mm f/1.8</div>
           </div>
         </div>
@@ -449,20 +390,20 @@ export default function App() {
 
       {/* STATS */}
       <div className="stats-grid">
-        <div className="stat-card clickable" style={{ animationDelay: '0ms' }} onClick={() => { setTab('pending'); clearSelection() }}>
+        <div className="stat-card clickable" onClick={() => { setTab('pending'); clearSelection() }}>
           <div className="stat-value" style={{ color: 'var(--yellow)' }}>{pending.length}</div>
           <div className="stat-label">Pendientes</div>
         </div>
-        <div className="stat-card clickable" style={{ animationDelay: '80ms' }} onClick={() => { setTab('reviewed'); clearSelection() }}>
-          <div className="stat-value" style={{ color: 'var(--accent)' }}>{totalReviewed}</div>
+        <div className="stat-card clickable" onClick={() => { setTab('reviewed'); clearSelection() }}>
+          <div className="stat-value" style={{ color: 'var(--accent)' }}>{reviewed.length}</div>
           <div className="stat-label">Revisadas</div>
         </div>
-        <div className="stat-card" style={{ animationDelay: '160ms' }}>
+        <div className="stat-card">
           <div className="stat-value">{avg}</div>
           <div className="stat-label">Score promedio</div>
           {avg !== '—' && <ScoreBar score={parseFloat(avg)} />}
         </div>
-        <div className="stat-card" style={{ animationDelay: '240ms' }}>
+        <div className="stat-card">
           <div className="stat-value" style={{ color: 'var(--green)' }}>{bestCount}</div>
           <div className="stat-label">Best of</div>
         </div>
@@ -475,14 +416,14 @@ export default function App() {
             📥 Pendientes <span className="count">{pending.length}</span>
           </button>
           <button className={`tab ${tab === 'reviewed' ? 'active' : ''}`} onClick={() => { setTab('reviewed'); clearSelection() }}>
-            ✅ Revisadas <span className="count">{totalReviewed}</span>
+            ✅ Revisadas <span className="count">{reviewed.length}</span>
           </button>
           <button className={`tab ${tab === 'analytics' ? 'active' : ''}`} onClick={() => { setTab('analytics'); clearSelection() }}>
             📊 Analytics
           </button>
         </div>
         <div className="kbd-hints">
-          <kbd>1</kbd><kbd>2</kbd> tabs · <kbd>R</kbd> refresh · <kbd>Esc</kbd> cerrar
+          <kbd>1</kbd><kbd>2</kbd> tabs · <kbd>Esc</kbd> cerrar
         </div>
       </div>
 
@@ -535,56 +476,36 @@ export default function App() {
         {!loading && tab === 'pending' && pending.map((p, i) => (
           <PhotoCard key={p.filename} photo={p} index={i} tab="pending"
             isSelected={!!selected[p.filename]} isProcessing={!!processing[p.filename]} isRemoving={!!removing[p.filename]}
-            onToggle={toggleSelect}
-            onView={openLightbox}
-            onTagClick={setSearch} />
+            onToggle={toggleSelect} onView={openLightbox} onTagClick={setSearch} />
         ))}
 
         {!loading && tab === 'pending' && pending.length === 0 && (
           <div className="empty-state">
             <div className="empty-icon">✨</div>
             <p>No hay fotos pendientes</p>
-            <p className="empty-sub">Tus fotos aparecerán aquí cuando se suban a Google Drive</p>
+            <p className="empty-sub">Las fotos aparecerán automáticamente cuando lleguen al bucket</p>
           </div>
         )}
 
         {!loading && tab === 'reviewed' && filteredReviewed.map((p, i) => (
           <PhotoCard key={p.filename} photo={p} index={i} tab="reviewed"
             isSelected={!!selected[p.filename]} isProcessing={false} isRemoving={!!removing[p.filename]}
-            onToggle={toggleSelect}
-            onView={openLightbox}
+            onToggle={toggleSelect} onView={openLightbox}
             onTagClick={tag => { setSearch(tag); setTab('reviewed') }} />
         ))}
 
         {!loading && tab === 'reviewed' && filteredReviewed.length === 0 && (
           <div className="empty-state">
             <div className="empty-icon">📷</div>
-            <p>No se encontraron fotos</p>
-            {debouncedSearch && <p className="empty-sub">Prueba con otros términos de búsqueda</p>}
+            <p>No se encontraron fotos revisadas</p>
+            {debouncedSearch ? (
+              <p className="empty-sub">Prueba con otros términos de búsqueda</p>
+            ) : (
+              <p className="empty-sub">Analiza fotos pendientes con 🤖 para verlas aquí</p>
+            )}
           </div>
         )}
       </div>
-
-      {/* LOAD MORE */}
-      {!loading && tab === 'reviewed' && reviewedHasMore && !debouncedSearch && category === 'todas' && (
-        <div className="load-more-wrap">
-          <button className="load-more-btn" onClick={loadMoreReviewed} disabled={loadingMore}>
-            {loadingMore ? (
-              <>
-                <div className="spinner-ring small" />
-                <span>Cargando...</span>
-              </>
-            ) : (
-              <>
-                <span>Cargar más fotos</span>
-                <span className="load-more-count">
-                  {reviewed.length} de {reviewedTotal}
-                </span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
 
       {/* ANALYTICS */}
       {tab === 'analytics' && (
@@ -625,7 +546,7 @@ export default function App() {
               <div className="lb-detail">
                 <h2 className="lb-filename">{lightbox.photo.filename}</h2>
 
-                {lightbox.photo.score != null && (
+                {lightbox.photo.score > 0 && (
                   <>
                     <div className="lb-score-row">
                       <span className={`score-pill big ${lightbox.photo.score >= 7 ? 'high' : lightbox.photo.score >= 5 ? 'mid' : 'low'}`}>
@@ -683,14 +604,11 @@ export default function App() {
                 )}
 
                 <div className="lb-actions">
-                  {lightbox.photo.fileId && (
-                    <a className="dl-chip" href={api.getDriveDownloadUrl(lightbox.photo.fileId)} target="_blank" rel="noreferrer">📷 JPG</a>
+                  {lightbox.photo.originalUrl && (
+                    <a className="dl-chip" href={lightbox.photo.originalUrl} target="_blank" rel="noreferrer">📷 JPG</a>
                   )}
-                  {(lightbox.photo.rawFileId || lightboxDetail?.rawFileId) && (
-                    <a className="dl-chip raw-chip" href={api.getDriveDownloadUrl(lightbox.photo.rawFileId || lightboxDetail.rawFileId)} target="_blank" rel="noreferrer">🎞️ RAW</a>
-                  )}
-                  {lightbox.photo.reviewId && (
-                    <a className="dl-chip" href={api.getReviewDocUrl(lightbox.photo.reviewId)} target="_blank" rel="noreferrer">📝 Review Doc</a>
+                  {lightbox.photo.rawUrl && (
+                    <a className="dl-chip raw-chip" href={lightbox.photo.rawUrl} target="_blank" rel="noreferrer">🎞️ RAW</a>
                   )}
                 </div>
 
@@ -787,13 +705,12 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isRemoving, on
         </>}
 
         <div className="card-footer">
-          <span className="card-date">{photo.fecha}</span>
           <div className="dl-actions">
-            {photo.fileId && (
-              <a className="dl-chip" href={api.getDriveDownloadUrl(photo.fileId)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>📷 JPG</a>
+            {photo.originalUrl && (
+              <a className="dl-chip" href={photo.originalUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>📷 JPG</a>
             )}
-            {photo.rawFileId && (
-              <a className="dl-chip raw-chip" href={api.getDriveDownloadUrl(photo.rawFileId)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>🎞️ RAW</a>
+            {photo.rawUrl && (
+              <a className="dl-chip raw-chip" href={photo.rawUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>🎞️ RAW</a>
             )}
           </div>
         </div>

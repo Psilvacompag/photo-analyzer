@@ -1,0 +1,25 @@
+/* ==========================================
+   v3 Extra Styles - Agregar al CSS existente
+   ========================================== */
+
+/* Status dot (Firestore connection) */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red, #ef4444);
+  transition: background 0.3s ease;
+}
+.status-dot.connected {
+  background: var(--green, #22c55e);
+  box-shadow: 0 0 6px var(--green, #22c55e);
+}
+
+/* Danger button for toolbar */
+.toolbar-btn.danger {
+  background: #dc2626;
+  color: white;
+}
+.toolbar-btn.danger:hover {
+  background: #b91c1c;
+}
