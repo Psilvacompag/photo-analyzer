@@ -20,13 +20,13 @@ export default function Coaching() {
     return unsub
   }, [])
 
-  async function loadCoaching() {
+async function loadCoaching() {
     setLoading(true)
     setError(null)
     try {
       const result = await api.fetchCoaching()
-      await saveCoaching(result)
-      // No seteamos data acá — el onSnapshot lo hace automáticamente
+      setData(result)              // ← actualiza UI de inmediato
+      await saveCoaching(result)   // persiste en Firestore
     } catch (e) {
       setError(e.message)
     } finally {
