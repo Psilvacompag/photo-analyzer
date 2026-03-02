@@ -1,3 +1,12 @@
+/* ===== Recharts tooltip wrapper fix ===== */
+.recharts-tooltip-wrapper {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  pointer-events: none;
+}
+
 /* ===== ANALYTICS DASHBOARD ===== */
 .analytics {
   max-width: 1280px;

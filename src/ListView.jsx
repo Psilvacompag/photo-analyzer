@@ -2,7 +2,7 @@ import { useState } from 'react'
 import * as api from './api'
 import './listview.css'
 
-export default function ListView({ photos, selected, onToggle, onView, burstMap }) {
+export default function ListView({ photos, selected, onToggle, onView }) {
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
 
@@ -58,7 +58,6 @@ export default function ListView({ photos, selected, onToggle, onView, burstMap 
             const score = photo.score || 0
             const scoreClass = score >= 7 ? 'high' : score >= 5 ? 'mid' : 'low'
             const isSelected = !!selected[photo.filename]
-            const burst = burstMap?.get(photo.filename)
 
             return (
               <tr
@@ -77,9 +76,6 @@ export default function ListView({ photos, selected, onToggle, onView, burstMap 
                 </td>
                 <td className="lv-thumb-cell" onClick={e => { e.stopPropagation(); onView(photo) }}>
                   <img src={api.getThumbUrl(photo)} alt="" className="lv-thumb" loading="lazy" />
-                  {burst && burst.index === 0 && (
-                    <span className="lv-burst-badge">{burst.total}</span>
-                  )}
                 </td>
                 <td className="lv-filename">{photo.filename}</td>
                 <td>

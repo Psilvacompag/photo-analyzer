@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { subscribePending, subscribeReviewed, getPhotoDetail, signInWithGoogle, logOut, onAuthChange } from './firebase'
 import * as api from './api'
 import { downloadXMP } from './xmp'
-import { groupIntoSessions, detectBursts } from './sessions'
+import { groupIntoSessions } from './sessions'
 import { toggleTheme, getTheme } from './theme'
 import Analytics from './Analytics'
 import './analytics.css'
@@ -343,7 +343,6 @@ function Gallery({ user }) {
   const [removing, setRemoving] = useState({})
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('todas')
-  const [sortBy, setSortBy] = useState('newest')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [lightbox, setLightbox] = useState(null)
@@ -487,20 +486,12 @@ function Gallery({ user }) {
       })
     }
 
-    if (sortBy === 'best') items.sort((a, b) => (b.score || 0) - (a.score || 0))
-    else if (sortBy === 'worst') items.sort((a, b) => (a.score || 0) - (b.score || 0))
-    else if (sortBy === 'oldest') items.sort((a, b) => a.filename.localeCompare(b.filename))
-    else items.sort((a, b) => b.filename.localeCompare(a.filename))
-
     return items
-  }, [reviewed, category, debouncedSearch, sortBy, dateFrom, dateTo, minScore])
+  }, [reviewed, category, debouncedSearch, dateFrom, dateTo, minScore])
 
   // Session grouping
   const pendingSessions = useMemo(() => groupIntoSessions(pending), [pending])
   const reviewedSessions = useMemo(() => groupIntoSessions(filteredReviewed), [filteredReviewed])
-
-  // Burst detection
-  const burstMap = useMemo(() => detectBursts([...pending, ...reviewed]), [pending, reviewed])
 
   // Best Of photos for slideshow
   const bestOfPhotos = useMemo(() => reviewed.filter(r => r.bestOf), [reviewed])
@@ -943,9 +934,6 @@ function Gallery({ user }) {
             </div>
             <div className="filter-row">
               <div className="filter-pills">
-                {[['newest','Recientes'],['oldest','Antiguas'],['best','Mejor score'],['worst','Peor score']].map(([k,v]) => (
-                  <button key={k} className={`pill ${sortBy === k ? 'active' : ''}`} onClick={() => setSortBy(k)}>{v}</button>
-                ))}
                 {[7, 8, 9].map(s => (
                   <button key={s} className={`score-chip ${minScore === s ? 'active' : ''}`}
                     onClick={() => setMinScore(prev => prev === s ? 0 : s)}>{s}+</button>
@@ -1007,13 +995,11 @@ function Gallery({ user }) {
               ),
               ...session.photos.map(p => {
                 const idx = cardIndex++
-                const burst = burstMap.get(p.filename)
                 return (
                   <PhotoCard key={p.filename} photo={p} index={si * 100 + idx} tab="pending"
                     isSelected={!!selected[p.filename]} isProcessing={!!processing[p.filename]}
                     isFocused={focusedIndex === pending.indexOf(p)}
                     removingType={removing[p.filename] || null}
-                    burstInfo={burst}
                     onToggle={toggleSelect} onView={openLightbox} onTagClick={setSearch} />
                 )
               })
@@ -1037,7 +1023,6 @@ function Gallery({ user }) {
           selected={selected}
           onToggle={toggleSelect}
           onView={openLightbox}
-          burstMap={burstMap}
         />
       )}
 
@@ -1059,13 +1044,11 @@ function Gallery({ user }) {
               ),
               ...session.photos.map(p => {
                 const idx = cardIndex++
-                const burst = burstMap.get(p.filename)
                 return (
                   <PhotoCard key={p.filename} photo={p} index={si * 100 + idx} tab="reviewed"
                     isSelected={!!selected[p.filename]} isProcessing={false}
                     isFocused={focusedIndex === filteredReviewed.indexOf(p)}
                     removingType={removing[p.filename] || null}
-                    burstInfo={burst}
                     onToggle={toggleSelect} onView={openLightbox}
                     onTagClick={tag => { setSearch(tag); setTab('reviewed') }} />
                 )
@@ -1140,11 +1123,6 @@ function Gallery({ user }) {
               </div>
               <div className="lb-detail">
                 <h2 className="lb-filename">{lightbox.photo.filename}</h2>
-                {burstMap.get(lightbox.photo.filename) && (
-                  <span className="burst-indicator">
-                    Toma {burstMap.get(lightbox.photo.filename).index + 1}/{burstMap.get(lightbox.photo.filename).total}
-                  </span>
-                )}
 
                 {lightbox.photo.score > 0 && (
                   <>
@@ -1316,7 +1294,7 @@ function ComparisonSide({ photo, detail }) {
 // ==========================================
 // PHOTO CARD
 // ==========================================
-function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, removingType, burstInfo, onToggle, onView, onTagClick }) {
+function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, removingType, onToggle, onView, onTagClick }) {
   const score = photo.score || 0
   const scoreClass = score >= 7 ? 'high' : score >= 5 ? 'mid' : 'low'
   const thumbUrl = api.getThumbUrl(photo)
@@ -1354,9 +1332,6 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, rem
         </div>
       )}
       {photo.bestOf && !isRemoving && <div className="badge best-badge">⭐ BEST OF</div>}
-      {burstInfo && burstInfo.index === 0 && !isRemoving && (
-        <div className="burst-badge">{burstInfo.total} tomas</div>
-      )}
 
       <div className="card-img-wrap">
         <LazyImage src={thumbUrl} alt={photo.filename} />
