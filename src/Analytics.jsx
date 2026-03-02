@@ -164,7 +164,7 @@ export default function Analytics({ reviewed }) {
               <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} vertical={false} />
               <XAxis dataKey="range" tick={{ fill: COLORS.text2, fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: COLORS.text3, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip content={<CustomTooltip />} wrapperStyle={{ outline: 'none' }} />
+              <Tooltip content={<CustomTooltip />} cursor={false} wrapperStyle={{ outline: 'none', background: 'none', border: 'none', boxShadow: 'none' }} />
               <Bar dataKey="count" name="Fotos" radius={[6, 6, 0, 0]} maxBarSize={50}>
                 {distData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
               </Bar>
@@ -185,7 +185,7 @@ export default function Analytics({ reviewed }) {
               >
                 {pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
               </Pie>
-              <Tooltip content={<CustomTooltip />} wrapperStyle={{ outline: 'none' }} />
+              <Tooltip content={<CustomTooltip />} cursor={false} wrapperStyle={{ outline: 'none', background: 'none', border: 'none', boxShadow: 'none' }} />
             </PieChart>
           </ResponsiveContainer>
           <div className="pie-legend">
@@ -216,7 +216,7 @@ export default function Analytics({ reviewed }) {
               <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} vertical={false} />
               <XAxis dataKey="filename" tick={false} axisLine={false} />
               <YAxis domain={[0, 10]} tick={{ fill: COLORS.text3, fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip wrapperStyle={{ outline: 'none' }} content={({ active, payload }) => {
+              <Tooltip cursor={false} wrapperStyle={{ outline: 'none', background: 'none', border: 'none', boxShadow: 'none' }} content={({ active, payload }) => {
                 if (!active || !payload?.length) return null
                 const d = payload[0]?.payload
                 return (
@@ -249,7 +249,7 @@ export default function Analytics({ reviewed }) {
               <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} horizontal={false} />
               <XAxis type="number" domain={[0, 10]} tick={{ fill: COLORS.text3, fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="category" tick={{ fill: COLORS.text2, fontSize: 12 }} axisLine={false} tickLine={false} width={90} />
-              <Tooltip wrapperStyle={{ outline: 'none' }} content={({ active, payload }) => {
+              <Tooltip cursor={false} wrapperStyle={{ outline: 'none', background: 'none', border: 'none', boxShadow: 'none' }} content={({ active, payload }) => {
                 if (!active || !payload?.length) return null
                 const d = payload[0]?.payload
                 return (
@@ -284,7 +284,7 @@ export default function Analytics({ reviewed }) {
                   <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} horizontal={false} />
                   <XAxis type="number" domain={[0, 10]} tick={{ fill: COLORS.text3, fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="lens" tick={{ fill: COLORS.text2, fontSize: 11 }} axisLine={false} tickLine={false} width={160} />
-                  <Tooltip wrapperStyle={{ outline: 'none' }} content={({ active, payload }) => {
+                  <Tooltip cursor={false} wrapperStyle={{ outline: 'none', background: 'none', border: 'none', boxShadow: 'none' }} content={({ active, payload }) => {
                     if (!active || !payload?.length) return null
                     const d = payload[0]?.payload
                     return (
@@ -319,7 +319,7 @@ export default function Analytics({ reviewed }) {
                     <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} vertical={false} />
                     <XAxis dataKey="iso" tick={{ fill: COLORS.text2, fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: COLORS.text3, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomTooltip />} wrapperStyle={{ outline: 'none' }} />
+                    <Tooltip content={<CustomTooltip />} cursor={false} wrapperStyle={{ outline: 'none', background: 'none', border: 'none', boxShadow: 'none' }} />
                     <Bar dataKey="count" name="Fotos" radius={[6, 6, 0, 0]} maxBarSize={45} fill={COLORS.cyan} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -335,7 +335,7 @@ export default function Analytics({ reviewed }) {
                     <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} vertical={false} />
                     <XAxis dataKey="aperture" tick={{ fill: COLORS.text2, fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: COLORS.text3, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomTooltip />} wrapperStyle={{ outline: 'none' }} />
+                    <Tooltip content={<CustomTooltip />} cursor={false} wrapperStyle={{ outline: 'none', background: 'none', border: 'none', boxShadow: 'none' }} />
                     <Bar dataKey="count" name="Fotos" radius={[6, 6, 0, 0]} maxBarSize={45} fill={COLORS.purple} />
                   </BarChart>
                 </ResponsiveContainer>
