@@ -2,12 +2,17 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { subscribePending, subscribeReviewed, getPhotoDetail, signInWithGoogle, logOut, onAuthChange } from './firebase'
 import * as api from './api'
 import { downloadXMP } from './xmp'
+import { groupIntoSessions, detectBursts } from './sessions'
+import { toggleTheme, getTheme } from './theme'
 import Analytics from './Analytics'
 import './analytics.css'
 import Coaching from './Coaching'
 import './coaching.css'
 import Upload from './Upload'
 import './upload.css'
+import Slideshow from './Slideshow'
+import ListView from './ListView'
+import PortfolioExport from './PortfolioExport'
 
 const CAT_ICONS = {
   paisajes: '🏔️', mascotas: '🐾', arquitectura: '🏛️',
@@ -350,6 +355,10 @@ function Gallery({ user }) {
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const [comparison, setComparison] = useState(null)
   const [downloading, setDownloading] = useState(false)
+  const [minScore, setMinScore] = useState(0)
+  const [viewMode, setViewMode] = useState('grid')
+  const [slideshowOpen, setSlideshowOpen] = useState(false)
+  const [theme, setTheme] = useState(getTheme)
 
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
@@ -450,6 +459,8 @@ function Gallery({ user }) {
 
     if (category !== 'todas') items = items.filter(r => r.category === category)
 
+    if (minScore > 0) items = items.filter(r => (r.score || 0) >= minScore)
+
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase()
       items = items.filter(r =>
@@ -482,7 +493,17 @@ function Gallery({ user }) {
     else items.sort((a, b) => b.filename.localeCompare(a.filename))
 
     return items
-  }, [reviewed, category, debouncedSearch, sortBy, dateFrom, dateTo])
+  }, [reviewed, category, debouncedSearch, sortBy, dateFrom, dateTo, minScore])
+
+  // Session grouping
+  const pendingSessions = useMemo(() => groupIntoSessions(pending), [pending])
+  const reviewedSessions = useMemo(() => groupIntoSessions(filteredReviewed), [filteredReviewed])
+
+  // Burst detection
+  const burstMap = useMemo(() => detectBursts([...pending, ...reviewed]), [pending, reviewed])
+
+  // Best Of photos for slideshow
+  const bestOfPhotos = useMemo(() => reviewed.filter(r => r.bestOf), [reviewed])
 
   // ===== LIGHTBOX =====
   async function openLightbox(photo) {
@@ -841,6 +862,18 @@ function Gallery({ user }) {
           </div>
           <div className="header-right">
             <div className={`status-dot ${connected ? 'connected' : ''}`} title={connected ? 'Conectado a Firestore' : 'Conectando...'} />
+            {bestOfPhotos.length > 0 && (
+              <button className="slideshow-trigger-btn" onClick={() => setSlideshowOpen(true)}>
+                &#9654; Best Of ({bestOfPhotos.length})
+              </button>
+            )}
+            <button
+              className="theme-toggle-btn"
+              onClick={() => { const t = toggleTheme(); setTheme(t) }}
+              title={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+            >
+              {theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19'}
+            </button>
             <div className="camera-badge">◉ Sony A7V</div>
             <UserMenu user={user} onLogout={handleLogout} />
           </div>
@@ -913,8 +946,21 @@ function Gallery({ user }) {
                 {[['newest','Recientes'],['oldest','Antiguas'],['best','Mejor score'],['worst','Peor score']].map(([k,v]) => (
                   <button key={k} className={`pill ${sortBy === k ? 'active' : ''}`} onClick={() => setSortBy(k)}>{v}</button>
                 ))}
+                {[7, 8, 9].map(s => (
+                  <button key={s} className={`score-chip ${minScore === s ? 'active' : ''}`}
+                    onClick={() => setMinScore(prev => prev === s ? 0 : s)}>{s}+</button>
+                ))}
               </div>
               <div className="select-actions">
+                <PortfolioExport photos={bestOfPhotos} showToast={showToast} />
+                <button className="view-toggle-btn" onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
+                  title={viewMode === 'grid' ? 'Vista lista' : 'Vista grilla'}>
+                  {viewMode === 'grid' ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  )}
+                </button>
                 <button className="small-btn" onClick={selectAll}>Seleccionar todas</button>
                 {selectedCount > 0 && <button className="small-btn" onClick={clearSelection}>× Deseleccionar</button>}
               </div>
@@ -943,51 +989,108 @@ function Gallery({ user }) {
 
       {/* GRID */}
       {tab === 'pending' && <Upload showToast={showToast} />}
-      <div className="grid">
-        {loading && Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={`skel-${i}`} index={i} />)}
 
-        {!loading && tab === 'pending' && pending.map((p, i) => (
-          <PhotoCard key={p.filename} photo={p} index={i} tab="pending"
-            isSelected={!!selected[p.filename]} isProcessing={!!processing[p.filename]}
-            isFocused={focusedIndex === i}
-            removingType={removing[p.filename] || null}
-            onToggle={toggleSelect} onView={openLightbox} onTagClick={setSearch} />
-        ))}
+      {/* Pending tab - session grouped grid */}
+      {tab === 'pending' && (
+        <div className="grid">
+          {loading && Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={`skel-${i}`} index={i} />)}
 
-        {!loading && tab === 'pending' && pending.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-icon">✨</div>
-            <p>No hay fotos pendientes</p>
-            <p className="empty-sub">Las fotos aparecerán automáticamente cuando lleguen al bucket</p>
-          </div>
-        )}
+          {!loading && pendingSessions.map((session, si) => {
+            let cardIndex = 0
+            return [
+              pendingSessions.length > 1 && (
+                <div className="session-header" key={`sh-${si}`}>
+                  <span className="session-date">{session.date}</span>
+                  <span className="session-meta">{session.photos.length} fotos</span>
+                  <div className="session-divider" />
+                </div>
+              ),
+              ...session.photos.map(p => {
+                const idx = cardIndex++
+                const burst = burstMap.get(p.filename)
+                return (
+                  <PhotoCard key={p.filename} photo={p} index={si * 100 + idx} tab="pending"
+                    isSelected={!!selected[p.filename]} isProcessing={!!processing[p.filename]}
+                    isFocused={focusedIndex === pending.indexOf(p)}
+                    removingType={removing[p.filename] || null}
+                    burstInfo={burst}
+                    onToggle={toggleSelect} onView={openLightbox} onTagClick={setSearch} />
+                )
+              })
+            ]
+          })}
 
-        {!loading && tab === 'reviewed' && filteredReviewed.map((p, i) => (
-          <PhotoCard key={p.filename} photo={p} index={i} tab="reviewed"
-            isSelected={!!selected[p.filename]} isProcessing={false}
-            isFocused={focusedIndex === i}
-            removingType={removing[p.filename] || null}
-            onToggle={toggleSelect} onView={openLightbox}
-            onTagClick={tag => { setSearch(tag); setTab('reviewed') }} />
-        ))}
+          {!loading && pending.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-icon">✨</div>
+              <p>No hay fotos pendientes</p>
+              <p className="empty-sub">Las fotos aparecerán automáticamente cuando lleguen al bucket</p>
+            </div>
+          )}
+        </div>
+      )}
 
-        {!loading && tab === 'reviewed' && filteredReviewed.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-icon">📷</div>
-            <p>No se encontraron fotos revisadas</p>
-            {debouncedSearch ? (
-              <p className="empty-sub">Prueba con otros términos de búsqueda</p>
-            ) : (
-              <p className="empty-sub">Analiza fotos pendientes con 🤖 para verlas aquí</p>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Reviewed tab - grid or list with sessions */}
+      {tab === 'reviewed' && !loading && viewMode === 'list' && (
+        <ListView
+          photos={filteredReviewed}
+          selected={selected}
+          onToggle={toggleSelect}
+          onView={openLightbox}
+          burstMap={burstMap}
+        />
+      )}
+
+      {tab === 'reviewed' && viewMode === 'grid' && (
+        <div className="grid">
+          {loading && Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={`skel-${i}`} index={i} />)}
+
+          {!loading && reviewedSessions.map((session, si) => {
+            let cardIndex = 0
+            return [
+              reviewedSessions.length > 1 && (
+                <div className="session-header" key={`rsh-${si}`}>
+                  <span className="session-date">{session.date}</span>
+                  <span className="session-meta">
+                    {session.photos.length} fotos{session.avgScore > 0 ? ` · avg ${session.avgScore}` : ''}
+                  </span>
+                  <div className="session-divider" />
+                </div>
+              ),
+              ...session.photos.map(p => {
+                const idx = cardIndex++
+                const burst = burstMap.get(p.filename)
+                return (
+                  <PhotoCard key={p.filename} photo={p} index={si * 100 + idx} tab="reviewed"
+                    isSelected={!!selected[p.filename]} isProcessing={false}
+                    isFocused={focusedIndex === filteredReviewed.indexOf(p)}
+                    removingType={removing[p.filename] || null}
+                    burstInfo={burst}
+                    onToggle={toggleSelect} onView={openLightbox}
+                    onTagClick={tag => { setSearch(tag); setTab('reviewed') }} />
+                )
+              })
+            ]
+          })}
+
+          {!loading && filteredReviewed.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-icon">📷</div>
+              <p>No se encontraron fotos revisadas</p>
+              {debouncedSearch ? (
+                <p className="empty-sub">Prueba con otros términos de búsqueda</p>
+              ) : (
+                <p className="empty-sub">Analiza fotos pendientes con 🤖 para verlas aquí</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ANALYTICS */}
       {tab === 'analytics' && (
         <>
-          <Analytics />
+          <Analytics reviewed={reviewed} />
           <Coaching />
         </>
       )}
@@ -1037,6 +1140,11 @@ function Gallery({ user }) {
               </div>
               <div className="lb-detail">
                 <h2 className="lb-filename">{lightbox.photo.filename}</h2>
+                {burstMap.get(lightbox.photo.filename) && (
+                  <span className="burst-indicator">
+                    Toma {burstMap.get(lightbox.photo.filename).index + 1}/{burstMap.get(lightbox.photo.filename).total}
+                  </span>
+                )}
 
                 {lightbox.photo.score > 0 && (
                   <>
@@ -1151,6 +1259,11 @@ function Gallery({ user }) {
         </div>
       )}
 
+      {/* SLIDESHOW */}
+      {slideshowOpen && bestOfPhotos.length > 0 && (
+        <Slideshow photos={bestOfPhotos} onClose={() => setSlideshowOpen(false)} />
+      )}
+
       {/* TOAST */}
       <div className="toast-container">
         <div className={`toast ${toast.visible ? 'show' : ''} ${toast.err ? 'error' : ''}`}>
@@ -1203,7 +1316,7 @@ function ComparisonSide({ photo, detail }) {
 // ==========================================
 // PHOTO CARD
 // ==========================================
-function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, removingType, onToggle, onView, onTagClick }) {
+function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, removingType, burstInfo, onToggle, onView, onTagClick }) {
   const score = photo.score || 0
   const scoreClass = score >= 7 ? 'high' : score >= 5 ? 'mid' : 'low'
   const thumbUrl = api.getThumbUrl(photo)
@@ -1241,6 +1354,9 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, rem
         </div>
       )}
       {photo.bestOf && !isRemoving && <div className="badge best-badge">⭐ BEST OF</div>}
+      {burstInfo && burstInfo.index === 0 && !isRemoving && (
+        <div className="burst-badge">{burstInfo.total} tomas</div>
+      )}
 
       <div className="card-img-wrap">
         <LazyImage src={thumbUrl} alt={photo.filename} />
@@ -1254,7 +1370,7 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, rem
       <div className="card-body">
         <div className="card-header">
           <h3 className="card-title">{photo.filename}</h3>
-          {tab === 'reviewed' && <span className={`score-pill ${scoreClass}`}>{score.toFixed(1)}</span>}
+          {tab === 'reviewed' && <span className={`score-pill card-score-prominent ${scoreClass}`}>{score.toFixed(1)}</span>}
         </div>
 
         {tab === 'reviewed' && <>

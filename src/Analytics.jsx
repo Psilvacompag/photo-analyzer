@@ -51,7 +51,9 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
-export default function Analytics() {
+import CalendarHeatmap from './CalendarHeatmap'
+
+export default function Analytics({ reviewed }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -114,6 +116,9 @@ export default function Analytics() {
 
   return (
     <div className="analytics">
+      {/* CALENDAR HEATMAP */}
+      {reviewed && reviewed.length > 0 && <CalendarHeatmap photos={reviewed} />}
+
       {/* KPI CARDS */}
       <div className="analytics-kpis">
         <div className="kpi-card">

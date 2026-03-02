@@ -1,0 +1,107 @@
+/* ===== Light Theme Overrides ===== */
+[data-theme="light"] {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface2: #f0f0f2;
+  --border: #d8d8e0;
+  --border2: #c0c0cc;
+  --text: #1a1a2e;
+  --text2: #5a5a72;
+  --text3: #8888a0;
+  --accent: #4a6aef;
+  --accent2: #3a56d4;
+  --green: #16a34a;
+  --yellow: #ca8a04;
+  --red: #dc2626;
+  --orange: #ea580c;
+}
+
+/* Scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--bg); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--border); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+
+/* Photo cards */
+[data-theme="light"] .photo-card {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+[data-theme="light"] .photo-card:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+/* Lightbox */
+[data-theme="light"] .lightbox-overlay {
+  background: rgba(255,255,255,0.92);
+}
+[data-theme="light"] .lightbox-close {
+  background: rgba(0,0,0,0.08);
+  border-color: rgba(0,0,0,0.15);
+  color: #1a1a2e;
+}
+[data-theme="light"] .lb-nav {
+  background: rgba(255,255,255,0.8);
+  border-color: rgba(0,0,0,0.1);
+  color: #1a1a2e;
+}
+
+/* Toast */
+[data-theme="light"] .toast {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+
+/* Toolbar */
+[data-theme="light"] .toolbar {
+  background: rgba(255,255,255,0.95);
+}
+
+/* Modal */
+[data-theme="light"] .modal-overlay {
+  background: rgba(255,255,255,0.7);
+}
+
+/* Login */
+[data-theme="light"] .login-screen {
+  background: var(--bg);
+}
+
+/* Score pills */
+[data-theme="light"] .score-pill.high { background: rgba(22,163,74,0.12); }
+[data-theme="light"] .score-pill.mid { background: rgba(202,138,4,0.12); }
+[data-theme="light"] .score-pill.low { background: rgba(220,38,38,0.12); }
+
+/* Comparison */
+[data-theme="light"] .comparison-overlay {
+  background: rgba(255,255,255,0.92);
+}
+
+/* Heatmap cells */
+[data-theme="light"] .heatmap-cell { opacity: 0.9; }
+
+/* Slideshow */
+[data-theme="light"] .slideshow-overlay {
+  background: rgba(0,0,0,0.95);
+}
+
+/* Date input */
+[data-theme="light"] .date-input::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
+/* Check */
+[data-theme="light"] .check {
+  border-color: rgba(0,0,0,0.3);
+  background: rgba(255,255,255,0.6);
+}
+
+/* Badges */
+[data-theme="light"] .badge.pending-badge { background: rgba(202,138,4,0.9); }
+
+/* Stat cards */
+[data-theme="light"] .stat-card {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* Image overlay */
+[data-theme="light"] .img-overlay {
+  background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%);
+}
