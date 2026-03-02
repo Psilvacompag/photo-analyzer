@@ -546,6 +546,186 @@
 /* ==========================================
    Mobile Touch Targets (min 44px)
    ========================================== */
+/* ==========================================
+   Focused Card (keyboard navigation)
+   ========================================== */
+.photo-card.focused {
+  outline: 2px solid var(--accent, #818cf8);
+  outline-offset: 2px;
+  z-index: 2;
+}
+
+/* ==========================================
+   XMP Chip
+   ========================================== */
+.xmp-chip {
+  background: rgba(167, 139, 250, 0.15) !important;
+  border-color: rgba(167, 139, 250, 0.4) !important;
+  color: #a78bfa !important;
+  cursor: pointer;
+  border: 1px solid;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.78em;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.xmp-chip:hover {
+  background: rgba(167, 139, 250, 0.3) !important;
+}
+
+/* ==========================================
+   Secondary toolbar button
+   ========================================== */
+.toolbar-btn.secondary {
+  background: var(--surface2, #1e1e2a);
+  border: 1px solid var(--border, #2a2a3a);
+  color: var(--text, #e4e4e7);
+}
+.toolbar-btn.secondary:hover {
+  border-color: var(--accent, #818cf8);
+  background: rgba(108, 140, 255, 0.1);
+}
+.toolbar-btn.secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================
+   Keyboard Hints
+   ========================================== */
+.kbd-hints {
+  font-size: 0.7em;
+  color: var(--text3, #55556a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kbd-hints kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 0.9em;
+  font-family: var(--mono, monospace);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border, #26262e);
+  border-radius: 3px;
+  margin: 0 1px;
+}
+
+/* ==========================================
+   Comparison Overlay
+   ========================================== */
+.comparison-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeUp 0.2s ease;
+}
+
+.comparison-content {
+  position: relative;
+  width: 95vw;
+  max-width: 1400px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg, #0a0a0f);
+  border: 1px solid var(--border, #2a2a3a);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.comparison-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.comparison-img {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--surface, #141418);
+  aspect-ratio: 3/2;
+}
+
+.comparison-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.comparison-info {
+  padding: 0 0.25rem;
+}
+
+.comparison-info h3 {
+  font-size: 0.9rem;
+  font-family: var(--mono, monospace);
+  color: var(--text, #e8e8ed);
+  margin: 0 0 0.5rem;
+}
+
+.comparison-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 0.5rem;
+  min-width: 50px;
+}
+
+.comparison-vs {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--accent, #818cf8);
+  letter-spacing: 0.05em;
+}
+
+.comparison-delta {
+  font-size: 0.85rem;
+  font-family: var(--mono, monospace);
+  font-weight: 600;
+  color: var(--text2, #8888a0);
+  padding: 4px 8px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-divider {
+    flex-direction: row;
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--border, #26262e);
+    border-bottom: 1px solid var(--border, #26262e);
+  }
+
+  .kbd-hints {
+    display: none;
+  }
+}
+
+/* ==========================================
+   Mobile Touch Targets (min 44px)
+   ========================================== */
 @media (max-width: 768px) {
   .check {
     width: 32px;

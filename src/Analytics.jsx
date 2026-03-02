@@ -267,6 +267,79 @@ export default function Analytics() {
         </div>
       </div>
 
+      {/* EXIF ANALYTICS */}
+      {data.exif_analytics?.by_lens?.length > 0 && (
+        <>
+          <div className="analytics-row">
+            <div className="chart-card full">
+              <h3 className="chart-title">📷 Rendimiento por Lente</h3>
+              <p className="chart-sub">Score promedio y cantidad de fotos por lente</p>
+              <ResponsiveContainer width="100%" height={Math.max(120, data.exif_analytics.by_lens.length * 50)}>
+                <BarChart data={data.exif_analytics.by_lens} layout="vertical" margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} horizontal={false} />
+                  <XAxis type="number" domain={[0, 10]} tick={{ fill: COLORS.text3, fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="lens" tick={{ fill: COLORS.text2, fontSize: 11 }} axisLine={false} tickLine={false} width={160} />
+                  <Tooltip content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null
+                    const d = payload[0]?.payload
+                    return (
+                      <div style={{
+                        background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+                        borderRadius: 10, padding: '10px 14px', fontSize: '0.8em',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                      }}>
+                        <div style={{ color: COLORS.text2, fontFamily: 'JetBrains Mono' }}>{d?.lens}</div>
+                        <div style={{ color: COLORS.accent }}>Promedio: <b>{d?.avg}</b></div>
+                        <div style={{ color: COLORS.text3 }}>{d?.count} fotos · Mejor: {d?.best}</div>
+                      </div>
+                    )
+                  }} />
+                  <Bar dataKey="avg" name="Promedio" radius={[0, 6, 6, 0]} maxBarSize={28}>
+                    {data.exif_analytics.by_lens.map((_, i) => (
+                      <Cell key={i} fill={i === 0 ? COLORS.green : COLORS.accent} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="analytics-row">
+            {data.exif_analytics.iso_distribution?.length > 0 && (
+              <div className="chart-card wide">
+                <h3 className="chart-title">📊 Distribución ISO</h3>
+                <p className="chart-sub">¿Con qué ISO disparas más?</p>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={data.exif_analytics.iso_distribution} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} vertical={false} />
+                    <XAxis dataKey="iso" tick={{ fill: COLORS.text2, fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: COLORS.text3, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="count" name="Fotos" radius={[6, 6, 0, 0]} maxBarSize={45} fill={COLORS.cyan} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {data.exif_analytics.aperture_distribution?.length > 0 && (
+              <div className="chart-card">
+                <h3 className="chart-title">📊 Distribución Apertura</h3>
+                <p className="chart-sub">Aperturas más usadas</p>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={data.exif_analytics.aperture_distribution.slice(0, 8)} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} vertical={false} />
+                    <XAxis dataKey="aperture" tick={{ fill: COLORS.text2, fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: COLORS.text3, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="count" name="Fotos" radius={[6, 6, 0, 0]} maxBarSize={45} fill={COLORS.purple} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {/* TOP & BOTTOM + TAGS */}
       <div className="analytics-row three-col">
         {/* Top 5 */}

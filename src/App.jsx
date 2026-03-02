@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { subscribePending, subscribeReviewed, getPhotoDetail, signInWithGoogle, logOut, onAuthChange } from './firebase'
 import * as api from './api'
+import { downloadXMP } from './xmp'
 import Analytics from './Analytics'
 import './analytics.css'
 import Coaching from './Coaching'
@@ -15,6 +16,21 @@ const CAT_ICONS = {
 const CATEGORIES = ['todas', 'paisajes', 'mascotas', 'arquitectura', 'personas', 'comida', 'otras']
 const CONCURRENCY_LIMIT = 3
 const UNDO_TIMEOUT_MS = 8000
+
+// ==========================================
+// BROWSER NOTIFICATIONS
+// ==========================================
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission()
+  }
+}
+
+function sendNotification(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+    new Notification(title, { body, icon: '📸' })
+  }
+}
 
 // ==========================================
 // LOGIN SCREEN
@@ -331,6 +347,9 @@ function Gallery({ user }) {
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState({ msg: '', visible: false, err: false, action: null })
   const [connected, setConnected] = useState(false)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
+  const [comparison, setComparison] = useState(null)
+  const [downloading, setDownloading] = useState(false)
 
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
@@ -521,6 +540,7 @@ function Gallery({ user }) {
       onConfirm: () => {
         setModal(null)
         setSelected({})
+        requestNotificationPermission()
         const newProc = {}
         fns.forEach(f => newProc[f] = true)
         setProcessing(prev => ({ ...prev, ...newProc }))
@@ -546,6 +566,7 @@ function Gallery({ user }) {
     let msg = `${ok} foto(s) analizadas`
     if (errors) msg += ` · ${errors} error(es)`
     showToast(msg, errors > 0)
+    sendNotification('Análisis completado', msg)
   }
 
   function handleDiscard() {
@@ -650,28 +671,151 @@ function Gallery({ user }) {
     }
   }
 
+  // ===== COMPARE =====
+  async function handleCompare() {
+    const fns = Object.keys(selected)
+    if (fns.length !== 2) return
+    const allPhotos = [...pending, ...reviewed]
+    const left = allPhotos.find(p => p.filename === fns[0])
+    const right = allPhotos.find(p => p.filename === fns[1])
+    if (!left || !right) return
+
+    setComparison({ left, right, leftDetail: null, rightDetail: null })
+    setSelected({})
+
+    try {
+      const [ld, rd] = await Promise.all([
+        left.score ? getPhotoDetail(left.filename) : null,
+        right.score ? getPhotoDetail(right.filename) : null,
+      ])
+      setComparison(prev => prev ? { ...prev, leftDetail: ld, rightDetail: rd } : null)
+    } catch (e) {
+      console.log('Compare detail load failed:', e)
+    }
+  }
+
+  // ===== BULK DOWNLOAD =====
+  async function handleBulkDownload() {
+    const fns = Object.keys(selected)
+    if (!fns.length || downloading) return
+
+    setDownloading(true)
+    showToast(`📦 Descargando ${fns.length} foto(s)...`)
+
+    try {
+      const JSZip = (await import('jszip')).default
+      const { saveAs } = await import('file-saver')
+      const zip = new JSZip()
+      let done = 0
+
+      const allPhotos = [...pending, ...reviewed]
+      for (const fn of fns) {
+        const photo = allPhotos.find(p => p.filename === fn)
+        if (!photo?.originalUrl) continue
+        try {
+          const resp = await fetch(photo.originalUrl)
+          if (resp.ok) {
+            const blob = await resp.blob()
+            zip.file(fn, blob)
+            done++
+            showToast(`📦 Descargando... ${done}/${fns.length}`)
+          }
+        } catch (e) {
+          console.warn(`Download failed for ${fn}:`, e)
+        }
+      }
+
+      if (done > 0) {
+        const content = await zip.generateAsync({ type: 'blob' })
+        saveAs(content, `photos-${new Date().toISOString().slice(0, 10)}.zip`)
+        showToast(`📦 ${done} foto(s) descargadas`)
+      } else {
+        showToast('No se pudieron descargar las fotos', true)
+      }
+    } catch (e) {
+      showToast('Error al crear ZIP: ' + e.message, true)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   // ===== KEYBOARD =====
+  const currentItems = useMemo(() =>
+    tab === 'pending' ? pending : tab === 'reviewed' ? filteredReviewed : [],
+    [tab, pending, filteredReviewed]
+  )
+
   useEffect(() => {
     function onKey(e) {
-      if (e.target.tagName === 'INPUT') return
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+
       if (e.key === 'Escape') {
-        if (lightbox) setLightbox(null)
-        else if (modal) setModal(null)
-        else if (selectedCount > 0) clearSelection()
+        if (comparison) { setComparison(null); return }
+        if (lightbox) { setLightbox(null); return }
+        if (modal) { setModal(null); return }
+        if (selectedCount > 0) { clearSelection(); return }
       }
+
       if (lightbox) {
         if (e.key === 'ArrowLeft') navigateLightbox(-1)
         if (e.key === 'ArrowRight') navigateLightbox(1)
+        return
       }
-      if (!lightbox && !modal) {
-        if (e.key === '1') { setTab('pending'); clearSelection() }
-        if (e.key === '2') { setTab('reviewed'); clearSelection() }
-        if (e.key === '3') { setTab('analytics'); clearSelection() }
+
+      if (comparison) return
+
+      if (!modal) {
+        // Tab switching
+        if (e.key === '1') { setTab('pending'); clearSelection(); setFocusedIndex(-1) }
+        if (e.key === '2') { setTab('reviewed'); clearSelection(); setFocusedIndex(-1) }
+        if (e.key === '3') { setTab('analytics'); clearSelection(); setFocusedIndex(-1) }
+
+        // Grid navigation
+        if (tab !== 'analytics' && currentItems.length > 0) {
+          if (e.key === 'j' || e.key === 'J') {
+            e.preventDefault()
+            setFocusedIndex(prev => {
+              const next = Math.min(prev + 1, currentItems.length - 1)
+              document.querySelector(`.photo-card:nth-child(${next + 1})`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+              return next
+            })
+          }
+          if (e.key === 'k' || e.key === 'K') {
+            e.preventDefault()
+            setFocusedIndex(prev => {
+              const next = Math.max(prev - 1, 0)
+              document.querySelector(`.photo-card:nth-child(${next + 1})`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+              return next
+            })
+          }
+          if (e.key === ' ' && focusedIndex >= 0 && focusedIndex < currentItems.length) {
+            e.preventDefault()
+            toggleSelect(currentItems[focusedIndex].filename)
+          }
+          if (e.key === 'Enter' && focusedIndex >= 0 && focusedIndex < currentItems.length) {
+            e.preventDefault()
+            openLightbox(currentItems[focusedIndex])
+          }
+        }
+
+        // Actions
+        if (e.key === 'a' || e.key === 'A') {
+          if (tab === 'pending' && selectedCount > 0) handleAnalyze()
+        }
+        if (e.key === 'd' || e.key === 'D') {
+          if (selectedCount > 0) handleDiscard()
+        }
+        if (e.key === 'c' || e.key === 'C') {
+          if (selectedCount === 2) handleCompare()
+        }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
+
+  // Reset focused index on tab change
+  useEffect(() => { setFocusedIndex(-1) }, [tab])
 
   // ===== COMPUTED =====
   const avg = reviewed.length > 0
@@ -738,7 +882,7 @@ function Gallery({ user }) {
           </button>
         </div>
         <div className="kbd-hints">
-          <kbd>1</kbd><kbd>2</kbd> tabs · <kbd>Esc</kbd> cerrar
+          <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> tabs · <kbd>J</kbd><kbd>K</kbd> navegar · <kbd>Space</kbd> seleccionar · <kbd>Enter</kbd> ver · <kbd>Esc</kbd> cerrar
         </div>
       </div>
 
@@ -805,6 +949,7 @@ function Gallery({ user }) {
         {!loading && tab === 'pending' && pending.map((p, i) => (
           <PhotoCard key={p.filename} photo={p} index={i} tab="pending"
             isSelected={!!selected[p.filename]} isProcessing={!!processing[p.filename]}
+            isFocused={focusedIndex === i}
             removingType={removing[p.filename] || null}
             onToggle={toggleSelect} onView={openLightbox} onTagClick={setSearch} />
         ))}
@@ -820,6 +965,7 @@ function Gallery({ user }) {
         {!loading && tab === 'reviewed' && filteredReviewed.map((p, i) => (
           <PhotoCard key={p.filename} photo={p} index={i} tab="reviewed"
             isSelected={!!selected[p.filename]} isProcessing={false}
+            isFocused={focusedIndex === i}
             removingType={removing[p.filename] || null}
             onToggle={toggleSelect} onView={openLightbox}
             onTagClick={tag => { setSearch(tag); setTab('reviewed') }} />
@@ -859,6 +1005,12 @@ function Gallery({ user }) {
         <div className="toolbar-btns">
           {removingCount === 0 && <>
             <button className="toolbar-btn cancel" onClick={clearSelection}>Cancelar</button>
+            {selectedCount === 2 && (
+              <button className="toolbar-btn secondary" onClick={handleCompare}>🔍 Comparar</button>
+            )}
+            <button className="toolbar-btn secondary" onClick={handleBulkDownload} disabled={downloading}>
+              {downloading ? '⏳ Descargando...' : '📦 Descargar'}
+            </button>
             <button className="toolbar-btn warn" onClick={handleDiscard}>🗑️ Descartar</button>
             {tab === 'reviewed' && (
               <button className="toolbar-btn danger" onClick={handleDelete}>💀 Eliminar</button>
@@ -951,6 +1103,9 @@ function Gallery({ user }) {
                   {lightbox.photo.rawUrl && (
                     <a className="dl-chip raw-chip" href={lightbox.photo.rawUrl} target="_blank" rel="noreferrer">🎞️ RAW</a>
                   )}
+                  {lightboxDetail?.edicion_raw && (
+                    <button className="dl-chip xmp-chip" onClick={() => downloadXMP(lightbox.photo.filename, lightboxDetail.edicion_raw)}>🎨 XMP</button>
+                  )}
                 </div>
 
                 <div className="lb-swipe-hint">← desliza para navegar →</div>
@@ -975,6 +1130,27 @@ function Gallery({ user }) {
         </div>
       )}
 
+      {/* COMPARISON */}
+      {comparison && (
+        <div className="comparison-overlay" onClick={() => setComparison(null)}>
+          <div className="comparison-content" onClick={e => e.stopPropagation()}>
+            <button className="lightbox-close" onClick={() => setComparison(null)}>✕</button>
+            <div className="comparison-grid">
+              <ComparisonSide photo={comparison.left} detail={comparison.leftDetail} />
+              <div className="comparison-divider">
+                <span className="comparison-vs">VS</span>
+                {comparison.left.score > 0 && comparison.right.score > 0 && (
+                  <span className="comparison-delta">
+                    {(comparison.left.score - comparison.right.score) > 0 ? '+' : ''}{(comparison.left.score - comparison.right.score).toFixed(1)}
+                  </span>
+                )}
+              </div>
+              <ComparisonSide photo={comparison.right} detail={comparison.rightDetail} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TOAST */}
       <div className="toast-container">
         <div className={`toast ${toast.visible ? 'show' : ''} ${toast.err ? 'error' : ''}`}>
@@ -991,9 +1167,43 @@ function Gallery({ user }) {
 }
 
 // ==========================================
+// COMPARISON SIDE
+// ==========================================
+function ComparisonSide({ photo, detail }) {
+  const score = photo.score || 0
+  const scoreClass = score >= 7 ? 'high' : score >= 5 ? 'mid' : 'low'
+
+  return (
+    <div className="comparison-side">
+      <div className="comparison-img">
+        <img src={api.getHighResUrl(photo)} alt={photo.filename} />
+      </div>
+      <div className="comparison-info">
+        <h3>{photo.filename}</h3>
+        {score > 0 && (
+          <div className="lb-score-row">
+            <span className={`score-pill big ${scoreClass}`}>{score.toFixed(1)}/10</span>
+            <span className="cat-pill">{CAT_ICONS[photo.category]} {photo.category}</span>
+            {photo.bestOf && <span className="best-pill">⭐ Best Of</span>}
+          </div>
+        )}
+        {photo.resumen && <p className="lb-summary">{photo.resumen}</p>}
+        {detail && (
+          <>
+            <ExifDetail exif={detail.exif} />
+            {detail.lo_mejor && <div className="review-section good"><h4>👍 Lo Mejor</h4><p>{detail.lo_mejor}</p></div>}
+            {detail.a_mejorar && <div className="review-section improve"><h4>🔧 A Mejorar</h4><p>{detail.a_mejorar}</p></div>}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
 // PHOTO CARD
 // ==========================================
-function PhotoCard({ photo, index, tab, isSelected, isProcessing, removingType, onToggle, onView, onTagClick }) {
+function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, removingType, onToggle, onView, onTagClick }) {
   const score = photo.score || 0
   const scoreClass = score >= 7 ? 'high' : score >= 5 ? 'mid' : 'low'
   const thumbUrl = api.getThumbUrl(photo)
@@ -1004,7 +1214,7 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, removingType, 
 
   return (
     <div
-      className={`photo-card ${isSelected ? 'selected' : ''} ${isProcessing ? 'processing' : ''} ${isRemoving ? 'removing' : ''}`}
+      className={`photo-card ${isSelected ? 'selected' : ''} ${isProcessing ? 'processing' : ''} ${isRemoving ? 'removing' : ''} ${isFocused ? 'focused' : ''}`}
       style={{ animationDelay: `${Math.min(index, 12) * 50}ms` }}
       onClick={e => {
         if (e.target.closest('.dl-actions') || e.target.closest('.tag-pill') || e.target.closest('.view-btn')) return
