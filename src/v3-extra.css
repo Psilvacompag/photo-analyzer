@@ -384,3 +384,221 @@
   border-color: rgba(239, 68, 68, 0.4);
   background: rgba(239, 68, 68, 0.12);
 }
+
+/* ==========================================
+   Toast Action Button (undo)
+   ========================================== */
+.toast-action {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--accent, #6c8cff);
+  background: rgba(108, 140, 255, 0.15);
+  color: var(--accent, #6c8cff);
+  font-size: 0.85em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  pointer-events: auto;
+}
+
+.toast-action:hover {
+  background: var(--accent, #6c8cff);
+  color: #fff;
+}
+
+/* ==========================================
+   Date Filter
+   ========================================== */
+.date-filter-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.date-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text3, #55556a);
+}
+
+.date-input {
+  padding: 6px 10px;
+  background: var(--surface, #141418);
+  border: 1px solid var(--border, #26262e);
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text, #e8e8ed);
+  font-family: var(--mono, monospace);
+  font-size: 0.78em;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.date-input:focus {
+  border-color: var(--accent, #6c8cff);
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+
+.date-sep {
+  color: var(--text3, #55556a);
+  font-size: 0.85em;
+}
+
+.date-clear {
+  font-size: 0.72em !important;
+  padding: 5px 10px !important;
+  color: var(--red, #f87171) !important;
+  border-color: rgba(248, 113, 113, 0.3) !important;
+}
+
+.date-clear:hover {
+  background: rgba(248, 113, 113, 0.1) !important;
+}
+
+/* ==========================================
+   EXIF Badge (card meta)
+   ========================================== */
+.exif-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65em;
+  color: var(--text3, #55556a);
+  font-family: var(--mono, monospace);
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exif-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+/* ==========================================
+   EXIF Detail (lightbox)
+   ========================================== */
+.exif-section {
+  border-color: rgba(108, 140, 255, 0.2) !important;
+}
+
+.exif-section h4 {
+  color: var(--text2, #8888a0) !important;
+}
+
+.exif-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.exif-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 0.72em;
+  padding: 3px 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.exif-label {
+  color: var(--text3, #55556a);
+}
+
+.exif-value {
+  color: var(--text, #e8e8ed);
+  font-family: var(--mono, monospace);
+  font-weight: 600;
+}
+
+/* ==========================================
+   Duplicate Warning (upload)
+   ========================================== */
+.upload-file-item.duplicate {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.05);
+}
+
+.upload-duplicate-warn {
+  display: block;
+  font-size: 0.72em;
+  color: var(--yellow, #fbbf24);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* ==========================================
+   Mobile Touch Targets (min 44px)
+   ========================================== */
+@media (max-width: 768px) {
+  .check {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    top: 8px;
+    left: 8px;
+  }
+
+  .pill {
+    padding: 10px 16px;
+    font-size: 0.82em;
+  }
+
+  .small-btn {
+    padding: 10px 16px;
+    font-size: 0.82em;
+    min-height: 44px;
+  }
+
+  .toolbar-btn {
+    padding: 12px 20px;
+    font-size: 0.9em;
+    min-height: 44px;
+  }
+
+  .dl-chip {
+    padding: 8px 14px;
+    font-size: 0.75em;
+    min-height: 36px;
+  }
+
+  .view-btn {
+    width: 52px;
+    height: 52px;
+  }
+
+  .search-input {
+    padding: 12px 36px 12px 40px;
+    font-size: 0.9em;
+    min-height: 44px;
+  }
+
+  .date-input {
+    padding: 8px 10px;
+    min-height: 36px;
+  }
+
+  .exif-badge {
+    display: none;
+  }
+
+  .date-filter-row {
+    gap: 6px;
+  }
+}

@@ -62,7 +62,7 @@ export async function deletePhotos(filenames) {
   return cloudRunPost('/api/delete', { filenames })
 }
 
-// ===== Aggregations (Cloud Run) =====
+// ===== Queries (Cloud Run) =====
 
 export async function fetchAnalytics() {
   return cloudRunGet('/api/analytics')
@@ -72,25 +72,20 @@ export async function fetchCoaching() {
   return cloudRunGet('/api/coaching')
 }
 
+export async function checkPhotoExists(filename) {
+  return cloudRunGet('/api/check-exists', { file: filename })
+}
+
 // ===== URL Helpers =====
 
-/**
- * URL del thumbnail (GCS directo, ya viene en el doc de Firestore)
- */
 export function getThumbUrl(photo) {
   return photo.thumbUrl || photo.originalUrl || ''
 }
 
-/**
- * URL alta resolución para lightbox (original de GCS)
- */
 export function getHighResUrl(photo) {
   return photo.originalUrl || photo.thumbUrl || ''
 }
 
-/**
- * URL de descarga del RAW
- */
 export function getRawDownloadUrl(photo) {
   return photo.rawUrl || ''
 }

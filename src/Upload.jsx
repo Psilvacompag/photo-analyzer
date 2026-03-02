@@ -4,11 +4,11 @@ import * as api from './api'
 const ACCEPTED_JPEG = '.jpg,.jpeg,.JPG,.JPEG'
 const ACCEPTED_RAW = '.arw,.ARW'
 
-// v2
-export default function Upload({ onComplete, showToast }) {
+export default function Upload({ showToast }) {
   const [files, setFiles] = useState([])
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [duplicates, setDuplicates] = useState({})
   const jpegInputRef = useRef(null)
   const rawInputRef = useRef(null)
 
@@ -19,7 +19,7 @@ export default function Upload({ onComplete, showToast }) {
     return null
   }
 
-  function addFiles(newFiles) {
+  async function addFiles(newFiles) {
     const classified = []
     for (const file of newFiles) {
       const type = classifyFile(file)
@@ -27,17 +27,37 @@ export default function Upload({ onComplete, showToast }) {
       if (files.some(f => f.file.name === file.name)) continue
       classified.push({ file, type, status: 'pending', progress: 0 })
     }
-    if (classified.length > 0) {
-      setFiles(prev => [...prev, ...classified])
+    if (classified.length === 0) return
+
+    setFiles(prev => [...prev, ...classified])
+
+    // Check duplicates for JPEG files
+    const jpegs = classified.filter(f => f.type === 'jpeg')
+    for (const entry of jpegs) {
+      try {
+        const result = await api.checkPhotoExists(entry.file.name)
+        if (result.exists) {
+          setDuplicates(prev => ({ ...prev, [entry.file.name]: true }))
+        }
+      } catch {
+        // Silently ignore check errors
+      }
     }
   }
 
   function removeFile(index) {
-    setFiles(prev => prev.filter((_, i) => i !== index))
+    setFiles(prev => {
+      const removed = prev[index]
+      if (removed) {
+        setDuplicates(d => { const n = { ...d }; delete n[removed.file.name]; return n })
+      }
+      return prev.filter((_, i) => i !== index)
+    })
   }
 
   function clearAll() {
     setFiles([])
+    setDuplicates({})
   }
 
   const handleDragOver = useCallback((e) => {
@@ -53,8 +73,7 @@ export default function Upload({ onComplete, showToast }) {
   const handleDrop = useCallback((e) => {
     e.preventDefault()
     setDragOver(false)
-    const droppedFiles = Array.from(e.dataTransfer.files)
-    addFiles(droppedFiles)
+    addFiles(Array.from(e.dataTransfer.files))
   }, [files])
 
   async function handleUpload() {
@@ -72,7 +91,6 @@ export default function Upload({ onComplete, showToast }) {
 
       try {
         const signed = await api.getSignedUrl(entry.file.name, entry.type)
-
         setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, progress: 10 } : f))
 
         await new Promise((resolve, reject) => {
@@ -109,16 +127,16 @@ export default function Upload({ onComplete, showToast }) {
 
     setUploading(false)
     if (ok > 0) {
-      showToast(`📤 ${ok} archivo(s) subido(s)${errors > 0 ? ` · ⚠️ ${errors} error(es)` : ''}`)
+      showToast(`📤 ${ok} archivo(s) subido(s)${errors > 0 ? ` · ${errors} error(es)` : ''}`)
     } else if (errors > 0) {
-      showToast(`⚠️ ${errors} error(es) al subir`, true)
+      showToast(`${errors} error(es) al subir`, true)
     }
-    if (onComplete) onComplete()
   }
 
   const pendingCount = files.filter(f => f.status === 'pending' || f.status === 'error').length
   const jpegCount = files.filter(f => f.type === 'jpeg').length
   const rawCount = files.filter(f => f.type === 'raw').length
+  const dupCount = Object.keys(duplicates).length
 
   return (
     <div className="upload-section">
@@ -142,7 +160,7 @@ export default function Upload({ onComplete, showToast }) {
         ) : (
           <div className="upload-file-list">
             {files.map((entry, i) => (
-              <div key={entry.file.name} className={`upload-file-item ${entry.status}`}>
+              <div key={entry.file.name} className={`upload-file-item ${entry.status} ${duplicates[entry.file.name] ? 'duplicate' : ''}`}>
                 <div className="upload-file-icon">
                   {entry.type === 'jpeg' ? '📷' : '🎞️'}
                 </div>
@@ -154,6 +172,9 @@ export default function Upload({ onComplete, showToast }) {
                       {entry.type.toUpperCase()}
                     </span>
                   </span>
+                  {duplicates[entry.file.name] && (
+                    <span className="upload-duplicate-warn">Ya existe en la galería</span>
+                  )}
                   {entry.status === 'uploading' && (
                     <div className="upload-progress-track">
                       <div className="upload-progress-fill" style={{ width: `${entry.progress}%` }} />
@@ -196,6 +217,7 @@ export default function Upload({ onComplete, showToast }) {
               {jpegCount > 0 && `${jpegCount} JPG`}
               {jpegCount > 0 && rawCount > 0 && ' · '}
               {rawCount > 0 && `${rawCount} RAW`}
+              {dupCount > 0 && ` · ${dupCount} duplicada(s)`}
             </span>
             {!uploading && (
               <button className="upload-clear-btn" onClick={clearAll}>Limpiar</button>
@@ -216,4 +238,4 @@ export default function Upload({ onComplete, showToast }) {
       </div>
     </div>
   )
-};
+}

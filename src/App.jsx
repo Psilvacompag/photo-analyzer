@@ -13,6 +13,8 @@ const CAT_ICONS = {
   personas: '👤', comida: '🍽️', otras: '📁', todas: '✨',
 }
 const CATEGORIES = ['todas', 'paisajes', 'mascotas', 'arquitectura', 'personas', 'comida', 'otras']
+const CONCURRENCY_LIMIT = 3
+const UNDO_TIMEOUT_MS = 8000
 
 // ==========================================
 // LOGIN SCREEN
@@ -137,6 +139,31 @@ function useIntersectionObserver(options = {}) {
 }
 
 // ==========================================
+// CONCURRENCY HELPER
+// ==========================================
+async function runWithConcurrency(tasks, limit, onTaskDone) {
+  const results = []
+  let index = 0
+
+  async function worker() {
+    while (index < tasks.length) {
+      const i = index++
+      try {
+        const result = await tasks[i]()
+        results[i] = { ok: true, result }
+      } catch (e) {
+        results[i] = { ok: false, error: e }
+      }
+      onTaskDone?.(i, results[i])
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, () => worker())
+  await Promise.all(workers)
+  return results
+}
+
+// ==========================================
 // SKELETON CARD
 // ==========================================
 function SkeletonCard({ index }) {
@@ -192,6 +219,64 @@ function ScoreBar({ score }) {
 }
 
 // ==========================================
+// EXIF BADGE
+// ==========================================
+function ExifBadge({ exif }) {
+  if (!exif) return null
+  const parts = []
+  if (exif.lens) parts.push(exif.lens)
+  else if (exif.focal_length) parts.push(exif.focal_length)
+  if (exif.aperture) parts.push(exif.aperture)
+  if (exif.shutter_speed) parts.push(exif.shutter_speed)
+  if (exif.iso) parts.push(`ISO ${exif.iso}`)
+  if (!parts.length) return null
+
+  return (
+    <div className="exif-badge">
+      <span className="exif-icon">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-7.07l-2.83 2.83M9.76 14.24l-2.83 2.83m11.14 0l-2.83-2.83M9.76 9.76L6.93 6.93"/></svg>
+      </span>
+      {parts.join(' · ')}
+    </div>
+  )
+}
+
+// ==========================================
+// EXIF DETAIL (lightbox)
+// ==========================================
+function ExifDetail({ exif }) {
+  if (!exif || Object.keys(exif).length === 0) return null
+
+  const rows = [
+    { label: 'Cámara', value: exif.camera },
+    { label: 'Lente', value: exif.lens },
+    { label: 'Focal', value: exif.focal_length },
+    { label: 'Apertura', value: exif.aperture },
+    { label: 'Velocidad', value: exif.shutter_speed },
+    { label: 'ISO', value: exif.iso },
+    { label: 'Exp. comp.', value: exif.exposure_comp && exif.exposure_comp !== '0' ? `${exif.exposure_comp} EV` : null },
+    { label: 'Balance', value: exif.white_balance },
+    { label: 'Medición', value: exif.metering },
+  ].filter(r => r.value)
+
+  if (!rows.length) return null
+
+  return (
+    <div className="review-section exif-section">
+      <h4>📷 Datos EXIF</h4>
+      <div className="exif-grid">
+        {rows.map(({ label, value }) => (
+          <div key={label} className="exif-row">
+            <span className="exif-label">{label}</span>
+            <span className="exif-value">{value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
 // APP
 // ==========================================
 export default function App() {
@@ -234,28 +319,36 @@ function Gallery({ user }) {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState({})
   const [processing, setProcessing] = useState({})
-  // removing: { filename: 'discard' | 'delete' }
   const [removing, setRemoving] = useState({})
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('todas')
   const [sortBy, setSortBy] = useState('newest')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [lightbox, setLightbox] = useState(null)
   const [lightboxDetail, setLightboxDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [modal, setModal] = useState(null)
-  const [toast, setToast] = useState({ msg: '', visible: false, err: false })
+  const [toast, setToast] = useState({ msg: '', visible: false, err: false, action: null })
   const [connected, setConnected] = useState(false)
 
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
+  const undoTimerRef = useRef(null)
   const debouncedSearch = useDebounce(search, 250)
   const selectedCount = Object.keys(selected).length
   const removingCount = Object.keys(removing).length
 
   // ===== TOAST =====
-  const showToast = useCallback((msg, err = false) => {
-    setToast({ msg, visible: true, err })
-    setTimeout(() => setToast(t => ({ ...t, visible: false })), 4000)
+  const showToast = useCallback((msg, err = false, action = null) => {
+    setToast({ msg, visible: true, err, action })
+    if (!action) {
+      setTimeout(() => setToast(t => ({ ...t, visible: false })), 4000)
+    }
+  }, [])
+
+  const dismissToast = useCallback(() => {
+    setToast(t => ({ ...t, visible: false, action: null }))
   }, [])
 
   // ===== FIRESTORE REAL-TIME =====
@@ -270,11 +363,7 @@ function Gallery({ user }) {
       }
     }
 
-    const unsubPending = subscribePending((photos) => {
-      setPending(photos)
-      pendingLoaded = true
-      markLoaded()
-      // Clean removing state for photos that disappeared from Firestore
+    const cleanRemoving = (photos) => {
       setRemoving(prev => {
         const next = { ...prev }
         const currentIds = new Set(photos.map(p => p.filename))
@@ -287,25 +376,20 @@ function Gallery({ user }) {
         }
         return changed ? next : prev
       })
+    }
+
+    const unsubPending = subscribePending((photos) => {
+      setPending(photos)
+      pendingLoaded = true
+      markLoaded()
+      cleanRemoving(photos)
     })
 
     const unsubReviewed = subscribeReviewed((photos) => {
       setReviewed(photos)
       reviewedLoaded = true
       markLoaded()
-      // Clean removing state for photos that disappeared
-      setRemoving(prev => {
-        const next = { ...prev }
-        const currentIds = new Set(photos.map(p => p.filename))
-        let changed = false
-        for (const fn of Object.keys(next)) {
-          if (!currentIds.has(fn)) {
-            delete next[fn]
-            changed = true
-          }
-        }
-        return changed ? next : prev
-      })
+      cleanRemoving(photos)
     })
 
     const timeout = setTimeout(() => {
@@ -344,7 +428,9 @@ function Gallery({ user }) {
   // ===== FILTER & SORT =====
   const filteredReviewed = useMemo(() => {
     let items = [...reviewed]
+
     if (category !== 'todas') items = items.filter(r => r.category === category)
+
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase()
       items = items.filter(r =>
@@ -354,12 +440,30 @@ function Gallery({ user }) {
         (r.resumen || '').toLowerCase().includes(q)
       )
     }
+
+    if (dateFrom) {
+      const from = new Date(dateFrom)
+      items = items.filter(r => {
+        if (!r.uploadedAt) return false
+        return new Date(r.uploadedAt) >= from
+      })
+    }
+
+    if (dateTo) {
+      const to = new Date(dateTo + 'T23:59:59')
+      items = items.filter(r => {
+        if (!r.uploadedAt) return false
+        return new Date(r.uploadedAt) <= to
+      })
+    }
+
     if (sortBy === 'best') items.sort((a, b) => (b.score || 0) - (a.score || 0))
     else if (sortBy === 'worst') items.sort((a, b) => (a.score || 0) - (b.score || 0))
     else if (sortBy === 'oldest') items.sort((a, b) => a.filename.localeCompare(b.filename))
     else items.sort((a, b) => b.filename.localeCompare(a.filename))
+
     return items
-  }, [reviewed, category, debouncedSearch, sortBy])
+  }, [reviewed, category, debouncedSearch, sortBy, dateFrom, dateTo])
 
   // ===== LIGHTBOX =====
   async function openLightbox(photo) {
@@ -412,7 +516,7 @@ function Gallery({ user }) {
     if (!fns.length) return
     setModal({
       icon: '🤖', title: 'Analizar con IA',
-      message: `${fns.length} foto(s) serán analizadas en segundo plano.`,
+      message: `${fns.length} foto(s) serán analizadas (${Math.min(CONCURRENCY_LIMIT, fns.length)} en paralelo).`,
       confirmLabel: 'Analizar', variant: 'primary',
       onConfirm: () => {
         setModal(null)
@@ -427,20 +531,21 @@ function Gallery({ user }) {
   }
 
   async function startBackgroundReview(filenames) {
-    let ok = 0, errors = 0
-    for (const fn of filenames) {
-      try {
-        await api.reviewPhoto(fn)
-        ok++
-      } catch (e) {
-        errors++
-        showToast(`⚠️ Error en ${fn}`, true)
-      }
+    const tasks = filenames.map(fn => () => api.reviewPhoto(fn))
+
+    const results = await runWithConcurrency(tasks, CONCURRENCY_LIMIT, (i, result) => {
+      const fn = filenames[i]
       setProcessing(prev => { const n = { ...prev }; delete n[fn]; return n })
-    }
-    let msg = `✅ ${ok} foto(s) analizadas`
-    if (errors) msg += ` · ⚠️ ${errors} error(es)`
-    showToast(msg)
+      if (!result.ok) {
+        showToast(`Error en ${fn}`, true)
+      }
+    })
+
+    const ok = results.filter(r => r.ok).length
+    const errors = results.filter(r => !r.ok).length
+    let msg = `${ok} foto(s) analizadas`
+    if (errors) msg += ` · ${errors} error(es)`
+    showToast(msg, errors > 0)
   }
 
   function handleDiscard() {
@@ -450,40 +555,61 @@ function Gallery({ user }) {
       icon: '🗑️', title: 'Descartar fotos',
       message: `${fns.length} foto(s) se marcarán como descartadas.`,
       confirmLabel: 'Descartar', variant: 'warn',
-      onConfirm: async () => {
+      onConfirm: () => {
         setModal(null)
-        // Mark cards as removing BEFORE clearing selection
         const newRemoving = {}
         fns.forEach(f => newRemoving[f] = 'discard')
         setRemoving(prev => ({ ...prev, ...newRemoving }))
         setSelected({})
-        showToast(`🗑️ Descartando ${fns.length} foto(s)...`)
-        try {
-          const result = await api.discardPhotos(fns)
-          const errCount = result.errors || 0
-          if (errCount > 0) {
-            showToast(`🗑️ ${result.discarded} descartadas · ⚠️ ${errCount} error(es)`, true)
-            // Clean removing state for errored ones
+
+        // Start undo timer
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+        const timer = setTimeout(() => executeDiscard(fns), UNDO_TIMEOUT_MS)
+        undoTimerRef.current = timer
+
+        showToast(`🗑️ Descartando ${fns.length} foto(s)...`, false, {
+          label: 'Deshacer',
+          onClick: () => {
+            clearTimeout(timer)
+            undoTimerRef.current = null
+            // Revert removing state
             setRemoving(prev => {
               const next = { ...prev }
               fns.forEach(f => delete next[f])
               return next
             })
-          } else {
-            showToast(`🗑️ ${result.discarded} foto(s) descartadas`)
+            dismissToast()
+            showToast('Descarte cancelado')
           }
-          // Firestore onSnapshot will clean removing state automatically
-        } catch (e) {
-          showToast('Error: ' + e.message, true)
-          // Revert removing state on error
-          setRemoving(prev => {
-            const next = { ...prev }
-            fns.forEach(f => delete next[f])
-            return next
-          })
-        }
+        })
       }
     })
+  }
+
+  async function executeDiscard(fns) {
+    undoTimerRef.current = null
+    dismissToast()
+    try {
+      const result = await api.discardPhotos(fns)
+      const errCount = result.errors || 0
+      if (errCount > 0) {
+        showToast(`🗑️ ${result.discarded} descartadas · ${errCount} error(es)`, true)
+        setRemoving(prev => {
+          const next = { ...prev }
+          fns.forEach(f => delete next[f])
+          return next
+        })
+      } else {
+        showToast(`🗑️ ${result.discarded} foto(s) descartadas`)
+      }
+    } catch (e) {
+      showToast('Error: ' + e.message, true)
+      setRemoving(prev => {
+        const next = { ...prev }
+        fns.forEach(f => delete next[f])
+        return next
+      })
+    }
   }
 
   function handleDelete() {
@@ -491,11 +617,10 @@ function Gallery({ user }) {
     if (!fns.length) return
     setModal({
       icon: '💀', title: 'Eliminar permanentemente',
-      message: `⚠️ ${fns.length} foto(s) serán ELIMINADAS permanentemente.\n\nSe borrarán de GCS y Firestore.\n\nEsta acción NO se puede deshacer.`,
+      message: `${fns.length} foto(s) serán ELIMINADAS permanentemente.\n\nSe borrarán de GCS y Firestore.\n\nEsta acción NO se puede deshacer.`,
       confirmLabel: `Eliminar ${fns.length} foto(s)`, variant: 'danger',
       onConfirm: async () => {
         setModal(null)
-        // Mark cards as removing BEFORE clearing selection
         const newRemoving = {}
         fns.forEach(f => newRemoving[f] = 'delete')
         setRemoving(prev => ({ ...prev, ...newRemoving }))
@@ -554,6 +679,9 @@ function Gallery({ user }) {
     : '—'
   const bestCount = reviewed.filter(r => r.bestOf).length
 
+  const hasDateFilter = dateFrom || dateTo
+  function clearDateFilter() { setDateFrom(''); setDateTo('') }
+
   // ===== RENDER =====
   return (
     <div className="app">
@@ -569,7 +697,7 @@ function Gallery({ user }) {
           </div>
           <div className="header-right">
             <div className={`status-dot ${connected ? 'connected' : ''}`} title={connected ? 'Conectado a Firestore' : 'Conectando...'} />
-            <div className="camera-badge">◉ Sony A7V · 20mm f/1.8</div>
+            <div className="camera-badge">◉ Sony A7V</div>
             <UserMenu user={user} onLogout={handleLogout} />
           </div>
         </div>
@@ -646,6 +774,19 @@ function Gallery({ user }) {
                 <button className="small-btn" onClick={selectAll}>Seleccionar todas</button>
                 {selectedCount > 0 && <button className="small-btn" onClick={clearSelection}>× Deseleccionar</button>}
               </div>
+            </div>
+            <div className="date-filter-row">
+              <label className="date-label">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <input type="date" className="date-input" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+              </label>
+              <span className="date-sep">—</span>
+              <label className="date-label">
+                <input type="date" className="date-input" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+              </label>
+              {hasDateFilter && (
+                <button className="small-btn date-clear" onClick={clearDateFilter}>✕ Limpiar fechas</button>
+              )}
             </div>
             {debouncedSearch && (
               <div className="search-results-count">
@@ -777,6 +918,7 @@ function Gallery({ user }) {
 
                 {lightboxDetail && (
                   <div className="lb-review">
+                    <ExifDetail exif={lightboxDetail.exif} />
                     {lightboxDetail.composicion && <div className="review-section"><h4>📐 Composición</h4><p>{lightboxDetail.composicion}</p></div>}
                     {lightboxDetail.exposicion && <div className="review-section"><h4>💡 Exposición</h4><p>{lightboxDetail.exposicion}</p></div>}
                     {lightboxDetail.enfoque && <div className="review-section"><h4>🎯 Enfoque</h4><p>{lightboxDetail.enfoque}</p></div>}
@@ -835,7 +977,14 @@ function Gallery({ user }) {
 
       {/* TOAST */}
       <div className="toast-container">
-        <div className={`toast ${toast.visible ? 'show' : ''} ${toast.err ? 'error' : ''}`}>{toast.msg}</div>
+        <div className={`toast ${toast.visible ? 'show' : ''} ${toast.err ? 'error' : ''}`}>
+          {toast.msg}
+          {toast.action && (
+            <button className="toast-action" onClick={toast.action.onClick}>
+              {toast.action.label}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -902,6 +1051,7 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, removingType, 
           <ScoreBar score={score} />
           <div className="card-meta">
             <span className="cat-pill">{CAT_ICONS[photo.category] || '📁'} {photo.category}</span>
+            <ExifBadge exif={photo.exif} />
           </div>
           {photo.tags && (
             <div className="tags-wrap">
