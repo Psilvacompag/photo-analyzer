@@ -4,6 +4,14 @@ import './heatmap.css'
 const DAYS = 90
 const DAY_MS = 24 * 60 * 60 * 1000
 
+function toDate(val) {
+  if (!val) return null
+  if (val.toDate) return val.toDate() // Firestore Timestamp
+  if (val.seconds) return new Date(val.seconds * 1000) // Firestore-like object
+  const d = new Date(val)
+  return isNaN(d.getTime()) ? null : d
+}
+
 function getDayKey(date) {
   return date.toISOString().slice(0, 10)
 }
@@ -15,8 +23,8 @@ export default function CalendarHeatmap({ photos }) {
     // Build day map
     const map = {}
     for (const p of photos) {
-      if (!p.uploadedAt) continue
-      const d = new Date(p.uploadedAt)
+      const d = toDate(p.uploadedAt)
+      if (!d) continue
       const key = getDayKey(d)
       if (!map[key]) map[key] = { count: 0, scores: [] }
       map[key].count++

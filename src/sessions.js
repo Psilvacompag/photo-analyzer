@@ -2,6 +2,14 @@
 
 const SESSION_GAP_MS = 2 * 60 * 60 * 1000 // 2 hours
 
+function toDate(val) {
+  if (!val) return null
+  if (val.toDate) return val.toDate() // Firestore Timestamp
+  if (val.seconds) return new Date(val.seconds * 1000) // Firestore-like object
+  const d = new Date(val)
+  return isNaN(d.getTime()) ? null : d
+}
+
 /**
  * Groups photos into sessions based on uploadedAt timestamps.
  * A gap > 2h between consecutive photos starts a new session.
@@ -12,15 +20,17 @@ export function groupIntoSessions(photos) {
   if (!photos.length) return []
 
   const sorted = [...photos].sort((a, b) => {
-    const ta = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0
-    const tb = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0
+    const da = toDate(a.uploadedAt)
+    const db = toDate(b.uploadedAt)
+    const ta = da ? da.getTime() : 0
+    const tb = db ? db.getTime() : 0
     return ta - tb
   })
 
   const sessions = []
   let current = { photos: [sorted[0]], startTime: null }
 
-  const getTime = (p) => p.uploadedAt ? new Date(p.uploadedAt).getTime() : 0
+  const getTime = (p) => { const d = toDate(p.uploadedAt); return d ? d.getTime() : 0 }
   current.startTime = getTime(sorted[0])
 
   for (let i = 1; i < sorted.length; i++) {
