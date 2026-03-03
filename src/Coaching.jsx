@@ -56,8 +56,8 @@ async function loadCoaching() {
           <div className="coaching-cta-icon">🤖</div>
           <h2 className="coaching-cta-title">AI Photo Coach</h2>
           <p className="coaching-cta-desc">
-            Gemini analiza todas tus fotos, detecta patrones, identifica fortalezas y debilidades,
-            y genera un plan de mejora personalizado.
+            Gemini analiza tus últimas 30 fotos revisadas, detecta patrones recientes,
+            identifica fortalezas y debilidades actuales, y genera un plan de mejora personalizado.
           </p>
           <button className="coaching-cta-btn" onClick={loadCoaching}>
             <span className="coaching-cta-btn-icon">🧠</span>
@@ -76,8 +76,8 @@ async function loadCoaching() {
         <div className="coaching-loading">
           <div className="coaching-loading-brain">🧠</div>
           <div className="coaching-loading-ring" />
-          <p className="coaching-loading-text">Analizando tu portfolio completo...</p>
-          <p className="coaching-loading-sub">Gemini está revisando patrones en todas tus fotos</p>
+          <p className="coaching-loading-text">Analizando tus fotos recientes...</p>
+          <p className="coaching-loading-sub">Gemini está revisando patrones en tus últimas 30 revisadas</p>
         </div>
       </div>
     )
@@ -101,7 +101,7 @@ async function loadCoaching() {
       <div className="coaching-header">
         <div className="coaching-header-left">
           <h2 className="coaching-main-title">🤖 AI Photo Coaching</h2>
-          <p className="coaching-main-sub">Análisis personalizado basado en tus {(data.fortalezas?.length || 0) + (data.debilidades?.length || 0)}+ patrones detectados</p>
+          <p className="coaching-main-sub">Basado en tus últimas 30 fotos revisadas</p>
         </div>
         <button className="coaching-refresh-btn" onClick={loadCoaching}>🔄 Regenerar</button>
       </div>
