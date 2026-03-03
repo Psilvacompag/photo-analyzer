@@ -58,7 +58,7 @@ export function groupIntoSessions(photos) {
       : 'Sin fecha'
 
     return { date, photos: s.photos, avgScore, startTime: startDate }
-  })
+  }).reverse()
 }
 
 /**
