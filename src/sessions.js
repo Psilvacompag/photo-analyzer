@@ -16,7 +16,7 @@ function toDate(val) {
  * @param {Array} photos - Array of photo objects with uploadedAt
  * @returns {Array<{date: string, photos: Array, avgScore: number, startTime: Date}>}
  */
-export function groupIntoSessions(photos) {
+export function groupIntoSessions(photos, { sortByScore = false } = {}) {
   if (!photos.length) return []
 
   const sorted = [...photos].sort((a, b) => {
@@ -57,7 +57,10 @@ export function groupIntoSessions(photos) {
       ? startDate.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
       : 'Sin fecha'
 
-    return { date, photos: s.photos, avgScore, startTime: startDate }
+    const sortedPhotos = sortByScore
+      ? [...s.photos].sort((a, b) => (b.score || 0) - (a.score || 0))
+      : s.photos
+    return { date, photos: sortedPhotos, avgScore, startTime: startDate }
   }).reverse()
 }
 

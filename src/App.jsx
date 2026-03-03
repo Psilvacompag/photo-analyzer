@@ -491,7 +491,7 @@ function Gallery({ user }) {
 
   // Session grouping
   const pendingSessions = useMemo(() => groupIntoSessions(pending), [pending])
-  const reviewedSessions = useMemo(() => groupIntoSessions(filteredReviewed), [filteredReviewed])
+  const reviewedSessions = useMemo(() => groupIntoSessions(filteredReviewed, { sortByScore: true }), [filteredReviewed])
 
   // Best Of photos for slideshow
   const bestOfPhotos = useMemo(() => reviewed.filter(r => r.bestOf), [reviewed])
