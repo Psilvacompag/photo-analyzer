@@ -4,6 +4,7 @@ import * as api from './api'
 import { downloadXMP } from './xmp'
 import { groupIntoSessions } from './sessions'
 import { toggleTheme, getTheme } from './theme'
+import exifr from 'exifr'
 import Analytics from './Analytics'
 import './analytics.css'
 import Coaching from './Coaching'
@@ -347,6 +348,7 @@ function Gallery({ user }) {
   const [dateTo, setDateTo] = useState('')
   const [lightbox, setLightbox] = useState(null)
   const [lightboxDetail, setLightboxDetail] = useState(null)
+  const [pendingExif, setPendingExif] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState({ msg: '', visible: false, err: false, action: null })
@@ -500,6 +502,7 @@ function Gallery({ user }) {
   async function openLightbox(photo) {
     setLightbox({ photo })
     setLightboxDetail(null)
+    setPendingExif(null)
 
     if (photo.score) {
       setDetailLoading(true)
@@ -510,6 +513,30 @@ function Gallery({ user }) {
         console.log('Detail load failed:', e)
       } finally {
         setDetailLoading(false)
+      }
+    } else if (photo.originalUrl) {
+      try {
+        const raw = await exifr.parse(photo.originalUrl, {
+          pick: ['Make', 'Model', 'LensModel', 'FocalLength', 'FNumber', 'ExposureTime', 'ISO', 'ExposureCompensation', 'WhiteBalance', 'MeteringMode'],
+        })
+        if (raw) {
+          const shutter = raw.ExposureTime
+            ? (raw.ExposureTime >= 1 ? `${raw.ExposureTime}s` : `1/${Math.round(1 / raw.ExposureTime)}`)
+            : null
+          setPendingExif({
+            camera: [raw.Make, raw.Model].filter(Boolean).join(' '),
+            lens: raw.LensModel || null,
+            focal_length: raw.FocalLength ? `${raw.FocalLength}mm` : null,
+            aperture: raw.FNumber ? `f/${raw.FNumber}` : null,
+            shutter_speed: shutter,
+            iso: raw.ISO ? String(raw.ISO) : null,
+            exposure_comp: raw.ExposureCompensation ? String(raw.ExposureCompensation) : null,
+            white_balance: raw.WhiteBalance || null,
+            metering: raw.MeteringMode || null,
+          })
+        }
+      } catch (e) {
+        console.log('EXIF extraction failed:', e)
       }
     }
 
@@ -1145,6 +1172,10 @@ function Gallery({ user }) {
                       <span key={i} className="tag-pill">#{t.trim()}</span>
                     ))}
                   </div>
+                )}
+
+                {pendingExif && !lightboxDetail && (
+                  <ExifDetail exif={pendingExif} />
                 )}
 
                 {detailLoading && (
