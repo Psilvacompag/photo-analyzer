@@ -59,7 +59,7 @@ export function groupIntoSessions(photos, { sortByScore = false } = {}) {
 
     const sortedPhotos = sortByScore
       ? [...s.photos].sort((a, b) => (b.score || 0) - (a.score || 0))
-      : s.photos
+      : [...s.photos].reverse()
     return { date, photos: sortedPhotos, avgScore, startTime: startDate }
   }).reverse()
 }
