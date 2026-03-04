@@ -123,6 +123,34 @@ export async function addUser(email, role = 'user') {
   return cloudRunPost('/api/users', { email, role })
 }
 
+// ===== Sharing =====
+
+export async function fetchShares() {
+  return cloudRunGet('/api/shares')
+}
+
+export async function shareGallery(email) {
+  return cloudRunPost('/api/shares', { email })
+}
+
+export async function unshareGallery(email) {
+  const url = new URL(`${BACKEND_URL}/api/shares`)
+  const headers = await getAuthHeaders()
+  const response = await fetch(url.toString(), {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ email }),
+  })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  const data = await response.json()
+  if (!data.ok) throw new Error(data.detail || 'Error del servidor')
+  return data.data
+}
+
+export async function fetchSharedGallery(ownerEmail) {
+  return cloudRunGet('/api/shared-gallery', { owner_email: ownerEmail })
+}
+
 export async function deleteUser(email) {
   const url = new URL(`${BACKEND_URL}/api/users`)
   const headers = await getAuthHeaders()

@@ -16,6 +16,8 @@ import ListView from './ListView'
 import PortfolioExport from './PortfolioExport'
 import AdminPanel from './AdminPanel'
 import './admin.css'
+import SharedGalleries from './SharedGalleries'
+import './shared.css'
 
 const CAT_ICONS = {
   paisajes: '🏔️', mascotas: '🐾', arquitectura: '🏛️',
@@ -434,14 +436,14 @@ function Gallery({ user }) {
       })
     }
 
-    const unsubPending = subscribePending((photos) => {
+    const unsubPending = subscribePending(user.email, (photos) => {
       setPending(photos)
       pendingLoaded = true
       markLoaded()
       cleanRemoving(photos)
     })
 
-    const unsubReviewed = subscribeReviewed((photos) => {
+    const unsubReviewed = subscribeReviewed(user.email, (photos) => {
       setReviewed(photos)
       reviewedLoaded = true
       markLoaded()
@@ -460,7 +462,7 @@ function Gallery({ user }) {
       unsubReviewed()
       clearTimeout(timeout)
     }
-  }, [showToast])
+  }, [showToast, user.email])
 
   // ===== SELECTION =====
   function toggleSelect(fn) {
@@ -835,7 +837,8 @@ function Gallery({ user }) {
         if (e.key === '1') { setTab('pending'); clearSelection(); setFocusedIndex(-1) }
         if (e.key === '2') { setTab('reviewed'); clearSelection(); setFocusedIndex(-1) }
         if (e.key === '3') { setTab('analytics'); clearSelection(); setFocusedIndex(-1) }
-        if (e.key === '4' && isAdmin) { setTab('admin'); clearSelection(); setFocusedIndex(-1) }
+        if (e.key === '4') { setTab('shared'); clearSelection(); setFocusedIndex(-1) }
+        if (e.key === '5' && isAdmin) { setTab('admin'); clearSelection(); setFocusedIndex(-1) }
 
         // Grid navigation
         if (tab !== 'analytics' && currentItems.length > 0) {
@@ -959,6 +962,9 @@ function Gallery({ user }) {
           <button className={`tab ${tab === 'analytics' ? 'active' : ''}`} onClick={() => { setTab('analytics'); clearSelection() }}>
             📊 Analytics
           </button>
+          <button className={`tab ${tab === 'shared' ? 'active' : ''}`} onClick={() => { setTab('shared'); clearSelection() }}>
+            🤝 Compartidas
+          </button>
           {isAdmin && (
             <button className={`tab ${tab === 'admin' ? 'active' : ''}`} onClick={() => { setTab('admin'); clearSelection() }}>
               ⚙️ Admin
@@ -966,7 +972,7 @@ function Gallery({ user }) {
           )}
         </div>
         <div className="kbd-hints">
-          <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>{isAdmin && <kbd>4</kbd>} tabs · <kbd>J</kbd><kbd>K</kbd> navegar · <kbd>Space</kbd> seleccionar · <kbd>Enter</kbd> ver · <kbd>Esc</kbd> cerrar
+          <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd>{isAdmin && <kbd>5</kbd>} tabs · <kbd>J</kbd><kbd>K</kbd> navegar · <kbd>Space</kbd> seleccionar · <kbd>Enter</kbd> ver · <kbd>Esc</kbd> cerrar
         </div>
       </div>
 
@@ -1134,8 +1140,13 @@ function Gallery({ user }) {
       {tab === 'analytics' && (
         <>
           <Analytics reviewed={reviewed} />
-          <Coaching />
+          <Coaching userUid={user.uid} />
         </>
+      )}
+
+      {/* SHARED */}
+      {tab === 'shared' && (
+        <SharedGalleries user={user} />
       )}
 
       {/* ADMIN */}

@@ -1,5 +1,6 @@
 // ==========================================
 // Firebase + Firestore Real-Time + Auth
+// Multi-tenant: queries filter by owner
 // ==========================================
 
 import { initializeApp } from 'firebase/app'
@@ -109,22 +110,24 @@ export async function getIdToken() {
 }
 
 // ==========================================
-// Firestore listeners
+// Firestore listeners (multi-tenant)
 // ==========================================
 
-export function subscribePending(callback) {
-  const q = query(
-    collection(db, 'photos'),
+export function subscribePending(ownerEmail, callback) {
+  const constraints = [
     where('status', '==', 'pending'),
-    orderBy('uploadedAt', 'desc')
-  )
+    where('owner', '==', ownerEmail),
+    orderBy('uploadedAt', 'desc'),
+  ]
+
+  const q = query(collection(db, 'photos'), ...constraints)
 
   return onSnapshot(q, (snapshot) => {
     const photos = snapshot.docs.map(doc => ({
       ...doc.data(),
       filename: doc.id,
     }))
-    console.log(`[Firestore] Pending: ${photos.length} fotos`)
+    console.log(`[Firestore] Pending: ${photos.length} fotos (owner=${ownerEmail})`)
     callback(photos)
   }, (error) => {
     console.error('[Firestore] Error en pending listener:', error)
@@ -132,19 +135,21 @@ export function subscribePending(callback) {
   })
 }
 
-export function subscribeReviewed(callback) {
-  const q = query(
-    collection(db, 'photos'),
+export function subscribeReviewed(ownerEmail, callback) {
+  const constraints = [
     where('status', '==', 'reviewed'),
-    orderBy('uploadedAt', 'desc')
-  )
+    where('owner', '==', ownerEmail),
+    orderBy('uploadedAt', 'desc'),
+  ]
+
+  const q = query(collection(db, 'photos'), ...constraints)
 
   return onSnapshot(q, (snapshot) => {
     const photos = snapshot.docs.map(doc => ({
       ...doc.data(),
       filename: doc.id,
     }))
-    console.log(`[Firestore] Reviewed: ${photos.length} fotos`)
+    console.log(`[Firestore] Reviewed: ${photos.length} fotos (owner=${ownerEmail})`)
     callback(photos)
   }, (error) => {
     console.error('[Firestore] Error en reviewed listener:', error)
@@ -162,15 +167,19 @@ export async function getPhotoDetail(filename) {
 }
 
 // ==========================================
-// Coaching - Firestore persistence
+// Coaching - Firestore persistence (per-user)
 // ==========================================
 
 /**
  * Escucha cambios en el documento de coaching en real-time.
- * callback(data) - data es null si no existe.
+ * Uses userUid as doc ID for per-user isolation.
  */
-export function subscribeCoaching(callback) {
-  const docRef = doc(db, 'coaching', 'latest')
+export function subscribeCoaching(userUid, callback) {
+  if (!userUid) {
+    callback(null)
+    return () => {}
+  }
+  const docRef = doc(db, 'coaching', userUid)
   return onSnapshot(docRef, (snap) => {
     if (snap.exists()) {
       console.log('[Firestore] Coaching loaded from Firestore')
@@ -186,14 +195,45 @@ export function subscribeCoaching(callback) {
 
 /**
  * Guarda el resultado del coaching en Firestore.
+ * Uses userUid as doc ID for per-user isolation.
  */
-export async function saveCoaching(data) {
-  const docRef = doc(db, 'coaching', 'latest')
+export async function saveCoaching(userUid, data) {
+  if (!userUid) return
+  const docRef = doc(db, 'coaching', userUid)
   await setDoc(docRef, {
     ...data,
     generatedAt: serverTimestamp(),
   })
   console.log('[Firestore] Coaching saved to Firestore')
+}
+
+// ==========================================
+// Sharing - Real-time listener
+// ==========================================
+
+/**
+ * Subscribe to galleries shared with me.
+ */
+export function subscribeSharedWithMe(email, callback) {
+  if (!email) {
+    callback([])
+    return () => {}
+  }
+  const q = query(
+    collection(db, 'workspace_shares'),
+    where('sharedWithEmail', '==', email)
+  )
+  return onSnapshot(q, (snapshot) => {
+    const shares = snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id,
+    }))
+    console.log(`[Firestore] Shared with me: ${shares.length}`)
+    callback(shares)
+  }, (error) => {
+    console.error('[Firestore] Error en shared listener:', error)
+    callback([])
+  })
 }
 
 export { db, auth }

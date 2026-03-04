@@ -5,20 +5,20 @@ import { subscribeCoaching, saveCoaching } from './firebase'
 const STRENGTH_ICONS = ['💪', '🎯', '✨', '🔥', '⭐']
 const WEAKNESS_ICONS = ['🔧', '📐', '💡', '🎨', '📷']
 
-export default function Coaching() {
+export default function Coaching({ userUid }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [initialLoad, setInitialLoad] = useState(true)
 
-  // Real-time listener desde Firestore (reemplaza localStorage)
+  // Real-time listener desde Firestore (per-user via userUid)
   useEffect(() => {
-    const unsub = subscribeCoaching((coaching) => {
+    const unsub = subscribeCoaching(userUid, (coaching) => {
       if (coaching) setData(coaching)
       setInitialLoad(false)
     })
     return unsub
-  }, [])
+  }, [userUid])
 
 async function loadCoaching() {
     setLoading(true)
@@ -26,7 +26,7 @@ async function loadCoaching() {
     try {
       const result = await api.fetchCoaching()
       setData(result)              // ← actualiza UI de inmediato
-      await saveCoaching(result)   // persiste en Firestore
+      await saveCoaching(userUid, result)   // persiste en Firestore per-user
     } catch (e) {
       setError(e.message)
     } finally {
