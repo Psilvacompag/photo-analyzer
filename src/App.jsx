@@ -247,6 +247,30 @@ function LazyImage({ src, alt }) {
 }
 
 // ==========================================
+// LIGHTBOX IMAGE (shows thumb while high-res loads)
+// ==========================================
+function LightboxImage({ photo }) {
+  const hiRes = api.getHighResUrl(photo)
+  const thumb = api.getThumbUrl(photo)
+  const [hiLoaded, setHiLoaded] = useState(false)
+
+  useEffect(() => { setHiLoaded(false) }, [hiRes])
+
+  return (
+    <>
+      {!hiLoaded && thumb && (
+        <img src={thumb} alt={photo.filename} style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'blur(2px)', position: 'absolute', inset: 0 }} />
+      )}
+      <img
+        src={hiRes} alt={photo.filename}
+        onLoad={() => setHiLoaded(true)}
+        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', opacity: hiLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+      />
+    </>
+  )
+}
+
+// ==========================================
 // SCORE BAR
 // ==========================================
 function ScoreBar({ score }) {
@@ -1229,7 +1253,7 @@ function Gallery({ user }) {
             <button className="lightbox-close" onClick={() => closeLightbox()}>✕</button>
             <div className="lb-layout">
               <div className="lb-image-wrap">
-                <img src={api.getHighResUrl(lightbox.photo)} alt={lightbox.photo.filename} />
+                <LightboxImage photo={lightbox.photo} />
               </div>
               <div className="lb-detail">
                 <h2 className="lb-filename">{lightbox.photo.filename}</h2>
