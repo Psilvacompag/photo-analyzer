@@ -563,6 +563,8 @@ function Gallery({ user }) {
   async function openLightbox(photo) {
     lightboxPushedRef.current = true
     window.history.pushState({ lightbox: true }, '')
+    // Sign originalUrl/rawUrl on-demand for lightbox
+    await api.resolvePhotoUrls(photo)
     setLightbox({ photo })
     setLightboxDetail(null)
     setPendingExif(null)
@@ -815,6 +817,7 @@ function Gallery({ user }) {
         const photo = allPhotos.find(p => p.filename === fn)
         if (!photo?.originalUrl) continue
         try {
+          await api.resolvePhotoUrls(photo)
           const resp = await fetch(photo.originalUrl)
           if (resp.ok) {
             const blob = await resp.blob()
