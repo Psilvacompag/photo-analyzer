@@ -802,27 +802,53 @@ body {
   }
   .filter-pills::-webkit-scrollbar, .score-chips::-webkit-scrollbar { display: none; }
 
-  /* Lightbox mobile */
-  .lb-layout { flex-direction: column; height: auto; max-height: 90vh; }
-  .lb-image-wrap { max-height: 50vh; }
-  .lb-detail { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 40vh; }
+  /* Lightbox mobile — full screen, scrollable */
+  .lightbox-content { width: 100vw; max-width: 100vw; max-height: 100vh; }
+  .lb-layout {
+    flex-direction: column; height: 100vh; max-height: 100vh;
+    border-radius: 0; overflow-y: auto;
+  }
+  .lb-image-wrap { min-height: 40vh; max-height: 50vh; flex-shrink: 0; }
+  .lb-image-wrap img { max-height: 50vh; }
+  .lb-detail {
+    width: 100%; border-left: none; border-top: 1px solid var(--border);
+    max-height: none; flex-shrink: 0; padding: var(--sp-4);
+  }
   .lb-nav { display: none; }
   .lb-swipe-hint { display: block; }
+
+  /* Controls compactos */
+  .controls { gap: var(--sp-2); }
+  .search-box { min-width: 0; }
+  .date-filter-row { font-size: 0.85em; }
+  .select-actions { flex-wrap: wrap; gap: var(--sp-1); }
 }
 
 @media (max-width: 480px) {
-  .header { padding: var(--sp-5) var(--sp-4) 0; }
+  .header { padding: var(--sp-4) var(--sp-3) 0; }
   .logo h1 { font-size: 1.1em; }
-  .stats-grid { padding: 0 var(--sp-4); gap: var(--sp-2); }
-  .stat-card { padding: 14px; }
-  .stat-value { font-size: 1.5em; }
-  .tabs-wrap { padding: 0 var(--sp-4); }
-  .controls { padding: 0 var(--sp-4); }
-  .grid { padding: 0 var(--sp-4) 120px; gap: var(--sp-2); }
+  .stats-grid { padding: 0 var(--sp-3); gap: var(--sp-2); }
+  .stat-card { padding: 12px; }
+  .stat-value { font-size: 1.4em; }
+  .stat-label { font-size: 0.65em; }
+  .tabs-wrap { padding: 0 var(--sp-3); }
+  .controls { padding: 0 var(--sp-3); }
+  .grid { padding: 0 var(--sp-3) 120px; gap: var(--sp-2); }
   .card-img-wrap { height: 120px; }
   .card-body { padding: 10px var(--sp-3) var(--sp-3); }
   .card-title { font-size: var(--text-xs); }
   .score-pill { font-size: 0.7em; padding: 2px var(--sp-2); }
   .toolbar { flex-direction: column; align-items: stretch; text-align: center; }
   .toolbar-btns { justify-content: center; flex-wrap: wrap; }
+
+  /* Hide date filter and select-all on small screens */
+  .date-filter-row { display: none; }
+  .filter-row .select-actions { display: none; }
+
+  /* Lightbox closer to edge */
+  .lightbox-close { top: var(--sp-2); right: var(--sp-2); }
+  .lb-detail { padding: var(--sp-3); gap: var(--sp-2); }
+  .lb-filename { font-size: 0.85em; }
+  .review-section { padding: 10px; }
+  .review-section p { font-size: 0.75em; }
 }
