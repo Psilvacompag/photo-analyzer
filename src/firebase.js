@@ -159,11 +159,11 @@ export function subscribeReviewed(ownerEmail, callback) {
   })
 }
 
-export async function getPhotoDetail(filename) {
-  const docRef = doc(db, 'photos', filename)
+export async function getPhotoDetail(docId) {
+  const docRef = doc(db, 'photos', docId)
   const docSnap = await getDoc(docRef)
   if (docSnap.exists()) {
-    return { ...docSnap.data(), filename: docSnap.id }
+    return { ...docSnap.data(), filename: docSnap.data().filename || docSnap.id }
   }
   return null
 }

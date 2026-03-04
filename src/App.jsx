@@ -560,7 +560,7 @@ function Gallery({ user }) {
     if (photo.score) {
       setDetailLoading(true)
       try {
-        const detail = await getPhotoDetail(photo.filename)
+        const detail = await getPhotoDetail(photo.docId || photo.filename)
         setLightboxDetail(detail)
       } catch (e) {
         console.log('Detail load failed:', e)
@@ -777,8 +777,8 @@ function Gallery({ user }) {
 
     try {
       const [ld, rd] = await Promise.all([
-        left.score ? getPhotoDetail(left.filename) : null,
-        right.score ? getPhotoDetail(right.filename) : null,
+        left.score ? getPhotoDetail(left.docId || left.filename) : null,
+        right.score ? getPhotoDetail(right.docId || right.filename) : null,
       ])
       setComparison(prev => prev ? { ...prev, leftDetail: ld, rightDetail: rd } : null)
     } catch (e) {
