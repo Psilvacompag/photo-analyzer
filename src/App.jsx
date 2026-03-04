@@ -210,17 +210,34 @@ function LazyImage({ src, alt }) {
   const [ref, isVisible] = useIntersectionObserver()
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
+  const [retries, setRetries] = useState(0)
+  const MAX_RETRIES = 3
+
+  useEffect(() => {
+    setLoaded(false)
+    setError(false)
+    setRetries(0)
+  }, [src])
+
+  useEffect(() => {
+    if (!error || retries >= MAX_RETRIES) return
+    const t = setTimeout(() => {
+      setError(false)
+      setRetries(r => r + 1)
+    }, 3000)
+    return () => clearTimeout(t)
+  }, [error, retries])
 
   return (
     <div ref={ref} style={{ width: '100%', height: '100%', position: 'relative' }}>
       {!loaded && <div className="skeleton-img shimmer" style={{ position: 'absolute', inset: 0 }} />}
       {isVisible && !error && (
-        <img src={src} alt={alt} loading="lazy"
+        <img src={`${src}${retries ? `?r=${retries}` : ''}`} alt={alt} loading="lazy"
           onLoad={() => setLoaded(true)} onError={() => setError(true)}
           style={{ opacity: loaded ? 1 : 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'opacity 0.3s ease', background: 'var(--surface2)' }}
         />
       )}
-      {error && <div className="img-error"><span>📷</span><small>No se pudo cargar</small></div>}
+      {error && retries >= MAX_RETRIES && <div className="img-error"><span>📷</span><small>No se pudo cargar</small></div>}
     </div>
   )
 }
