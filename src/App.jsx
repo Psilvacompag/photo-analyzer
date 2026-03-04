@@ -332,13 +332,6 @@ export default function App() {
     return unsub
   }, [])
 
-  useEffect(() => {
-    if (!user) { setIsAdmin(false); return }
-    api.fetchCurrentUser()
-      .then(data => setIsAdmin(data.role === 'admin'))
-      .catch(() => setIsAdmin(false))
-  }, [user])
-
   if (authLoading) {
     return (
       <div className="login-screen">
@@ -387,6 +380,13 @@ function Gallery({ user }) {
   const [slideshowOpen, setSlideshowOpen] = useState(false)
   const [theme, setTheme] = useState(getTheme)
   const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    api.fetchCurrentUser()
+      .then(data => setIsAdmin(data.role === 'admin'))
+      .catch(() => setIsAdmin(false))
+  }, [user])
 
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
