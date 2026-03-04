@@ -1388,12 +1388,14 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, rem
       className={`photo-card ${isSelected ? 'selected' : ''} ${isProcessing ? 'processing' : ''} ${isRemoving ? 'removing' : ''} ${isFocused ? 'focused' : ''}`}
       style={{ animationDelay: `${Math.min(index, 15) * 0.03}s` }}
       onClick={e => {
-        if (e.target.closest('.dl-actions') || e.target.closest('.tag-pill') || e.target.closest('.view-btn')) return
+        if (e.target.closest('.dl-actions') || e.target.closest('.tag-pill') || e.target.closest('.check')) return
         if (isProcessing || isRemoving) return
-        onToggle(photo.filename)
+        onView(photo)
       }}
     >
-      <div className={`check ${isSelected ? 'checked' : ''}`}>
+      <div className={`check ${isSelected ? 'checked' : ''}`}
+        onClick={e => { e.stopPropagation(); if (!isProcessing && !isRemoving) onToggle(photo.filename) }}
+      >
         {isSelected && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
       </div>
 
@@ -1415,11 +1417,7 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, rem
 
       <div className="card-img-wrap">
         <LazyImage src={thumbUrl} alt={photo.filename} />
-        <div className="img-overlay">
-          <button className="view-btn" onClick={e => { e.stopPropagation(); onView(photo) }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-          </button>
-        </div>
+        <div className="img-overlay" />
       </div>
 
       <div className="card-body">

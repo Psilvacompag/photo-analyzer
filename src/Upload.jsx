@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import * as api from './api'
 
-const ACCEPTED_JPEG = '.jpg,.jpeg,.JPG,.JPEG'
+const ACCEPTED_JPEG = '.jpg,.jpeg,.JPG,.JPEG,.heic,.HEIC,.heif,.HEIF'
 const ACCEPTED_RAW = '.arw,.ARW'
 
 export default function Upload({ showToast }) {
@@ -14,7 +14,7 @@ export default function Upload({ showToast }) {
 
   function classifyFile(file) {
     const ext = file.name.split('.').pop().toUpperCase()
-    if (ext === 'JPG' || ext === 'JPEG') return 'jpeg'
+    if (['JPG', 'JPEG', 'HEIC', 'HEIF'].includes(ext)) return 'jpeg'
     if (ext === 'ARW') return 'raw'
     return null
   }

@@ -63,9 +63,9 @@ export default function ListView({ photos, selected, onToggle, onView }) {
               <tr
                 key={photo.filename}
                 className={`lv-row ${isSelected ? 'lv-selected' : ''}`}
-                onClick={() => onToggle(photo.filename)}
+                onClick={() => onView(photo)}
               >
-                <td className="lv-check-cell">
+                <td className="lv-check-cell" onClick={e => { e.stopPropagation(); onToggle(photo.filename) }}>
                   <div className={`lv-checkbox ${isSelected ? 'checked' : ''}`}>
                     {isSelected && (
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
@@ -74,7 +74,7 @@ export default function ListView({ photos, selected, onToggle, onView }) {
                     )}
                   </div>
                 </td>
-                <td className="lv-thumb-cell" onClick={e => { e.stopPropagation(); onView(photo) }}>
+                <td className="lv-thumb-cell">
                   <img src={api.getThumbUrl(photo)} alt="" className="lv-thumb" loading="lazy" />
                 </td>
                 <td className="lv-filename">{photo.filename}</td>
