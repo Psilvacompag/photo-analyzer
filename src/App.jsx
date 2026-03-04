@@ -14,6 +14,8 @@ import './upload.css'
 import Slideshow from './Slideshow'
 import ListView from './ListView'
 import PortfolioExport from './PortfolioExport'
+import AdminPanel from './AdminPanel'
+import './admin.css'
 
 const CAT_ICONS = {
   paisajes: '🏔️', mascotas: '🐾', arquitectura: '🏛️',
@@ -330,6 +332,13 @@ export default function App() {
     return unsub
   }, [])
 
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return }
+    api.fetchCurrentUser()
+      .then(data => setIsAdmin(data.role === 'admin'))
+      .catch(() => setIsAdmin(false))
+  }, [user])
+
   if (authLoading) {
     return (
       <div className="login-screen">
@@ -377,6 +386,7 @@ function Gallery({ user }) {
   const [viewMode, setViewMode] = useState('grid')
   const [slideshowOpen, setSlideshowOpen] = useState(false)
   const [theme, setTheme] = useState(getTheme)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
@@ -825,6 +835,7 @@ function Gallery({ user }) {
         if (e.key === '1') { setTab('pending'); clearSelection(); setFocusedIndex(-1) }
         if (e.key === '2') { setTab('reviewed'); clearSelection(); setFocusedIndex(-1) }
         if (e.key === '3') { setTab('analytics'); clearSelection(); setFocusedIndex(-1) }
+        if (e.key === '4' && isAdmin) { setTab('admin'); clearSelection(); setFocusedIndex(-1) }
 
         // Grid navigation
         if (tab !== 'analytics' && currentItems.length > 0) {
@@ -948,9 +959,14 @@ function Gallery({ user }) {
           <button className={`tab ${tab === 'analytics' ? 'active' : ''}`} onClick={() => { setTab('analytics'); clearSelection() }}>
             📊 Analytics
           </button>
+          {isAdmin && (
+            <button className={`tab ${tab === 'admin' ? 'active' : ''}`} onClick={() => { setTab('admin'); clearSelection() }}>
+              ⚙️ Admin
+            </button>
+          )}
         </div>
         <div className="kbd-hints">
-          <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> tabs · <kbd>J</kbd><kbd>K</kbd> navegar · <kbd>Space</kbd> seleccionar · <kbd>Enter</kbd> ver · <kbd>Esc</kbd> cerrar
+          <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>{isAdmin && <kbd>4</kbd>} tabs · <kbd>J</kbd><kbd>K</kbd> navegar · <kbd>Space</kbd> seleccionar · <kbd>Enter</kbd> ver · <kbd>Esc</kbd> cerrar
         </div>
       </div>
 
@@ -1120,6 +1136,11 @@ function Gallery({ user }) {
           <Analytics reviewed={reviewed} />
           <Coaching />
         </>
+      )}
+
+      {/* ADMIN */}
+      {tab === 'admin' && isAdmin && (
+        <AdminPanel currentUserEmail={user.email} />
       )}
 
       {/* TOOLBAR */}

@@ -108,3 +108,31 @@ export async function getSignedUrl(filename, fileType) {
 export async function uploadComplete(filename, fileType) {
   return cloudRunPost('/api/upload/complete', { filename, file_type: fileType })
 }
+
+// ===== User Management =====
+
+export async function fetchCurrentUser() {
+  return cloudRunGet('/api/users/me')
+}
+
+export async function fetchUsers() {
+  return cloudRunGet('/api/users')
+}
+
+export async function addUser(email, role = 'user') {
+  return cloudRunPost('/api/users', { email, role })
+}
+
+export async function deleteUser(email) {
+  const url = new URL(`${BACKEND_URL}/api/users`)
+  const headers = await getAuthHeaders()
+  const response = await fetch(url.toString(), {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ email }),
+  })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  const data = await response.json()
+  if (!data.ok) throw new Error(data.detail || 'Error del servidor')
+  return data.data
+}
