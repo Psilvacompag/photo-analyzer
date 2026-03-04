@@ -528,7 +528,31 @@ function Gallery({ user }) {
   const bestOfPhotos = useMemo(() => reviewed.filter(r => r.bestOf), [reviewed])
 
   // ===== LIGHTBOX =====
+  // Close lightbox on browser back button (mobile UX)
+  const lightboxPushedRef = useRef(false)
+  useEffect(() => {
+    function onPopState() {
+      if (lightboxPushedRef.current) {
+        lightboxPushedRef.current = false
+        setLightbox(null)
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  function closeLightbox() {
+    if (lightboxPushedRef.current) {
+      lightboxPushedRef.current = false
+      window.history.back()  // triggers popstate → setLightbox(null)
+    } else {
+      setLightbox(null)
+    }
+  }
+
   async function openLightbox(photo) {
+    lightboxPushedRef.current = true
+    window.history.pushState({ lightbox: true }, '')
     setLightbox({ photo })
     setLightboxDetail(null)
     setPendingExif(null)
@@ -819,7 +843,7 @@ function Gallery({ user }) {
 
       if (e.key === 'Escape') {
         if (comparison) { setComparison(null); return }
-        if (lightbox) { setLightbox(null); return }
+        if (lightbox) { closeLightbox(); return }
         if (modal) { setModal(null); return }
         if (selectedCount > 0) { clearSelection(); return }
       }
@@ -1186,13 +1210,13 @@ function Gallery({ user }) {
 
       {/* LIGHTBOX */}
       {lightbox && (
-        <div className="lightbox-overlay" onClick={() => setLightbox(null)}
+        <div className="lightbox-overlay" onClick={() => closeLightbox()}
           onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           <button className="lb-nav lb-prev" onClick={e => { e.stopPropagation(); navigateLightbox(-1) }}>‹</button>
           <button className="lb-nav lb-next" onClick={e => { e.stopPropagation(); navigateLightbox(1) }}>›</button>
 
           <div className="lightbox-content" onClick={e => e.stopPropagation()}>
-            <button className="lightbox-close" onClick={() => setLightbox(null)}>✕</button>
+            <button className="lightbox-close" onClick={() => closeLightbox()}>✕</button>
             <div className="lb-layout">
               <div className="lb-image-wrap">
                 <img src={api.getHighResUrl(lightbox.photo)} alt={lightbox.photo.filename} />
