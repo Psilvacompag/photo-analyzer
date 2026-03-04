@@ -23,6 +23,7 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
 } from 'firebase/auth'
+import { resolveSignedUrls } from './api'
 
 const firebaseConfig = {
   apiKey: "AIzaSyC4TukkPAPm3zemEQw_v297HgmUN70zYt8",
@@ -122,13 +123,14 @@ export function subscribePending(ownerEmail, callback) {
 
   const q = query(collection(db, 'photos'), ...constraints)
 
-  return onSnapshot(q, (snapshot) => {
+  return onSnapshot(q, async (snapshot) => {
     const photos = snapshot.docs.map(doc => ({
       ...doc.data(),
       filename: doc.data().filename || doc.id,
       docId: doc.id,
     }))
     console.log(`[Firestore] Pending: ${photos.length} fotos (owner=${ownerEmail})`)
+    await resolveSignedUrls(photos)
     callback(photos)
   }, (error) => {
     console.error('[Firestore] Error en pending listener:', error)
@@ -145,13 +147,14 @@ export function subscribeReviewed(ownerEmail, callback) {
 
   const q = query(collection(db, 'photos'), ...constraints)
 
-  return onSnapshot(q, (snapshot) => {
+  return onSnapshot(q, async (snapshot) => {
     const photos = snapshot.docs.map(doc => ({
       ...doc.data(),
       filename: doc.data().filename || doc.id,
       docId: doc.id,
     }))
     console.log(`[Firestore] Reviewed: ${photos.length} fotos (owner=${ownerEmail})`)
+    await resolveSignedUrls(photos)
     callback(photos)
   }, (error) => {
     console.error('[Firestore] Error en reviewed listener:', error)

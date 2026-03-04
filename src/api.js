@@ -83,6 +83,75 @@ export async function checkPhotoExists(filename) {
   return cloudRunGet('/api/check-exists', { file: filename })
 }
 
+// ===== Signed URL Cache =====
+
+const SIGNED_URL_TTL = 3.5 * 60 * 60 * 1000 // 3.5 hours in ms
+const signedUrlCache = new Map() // path -> { url, expires }
+
+const BUCKET_URL = 'https://storage.googleapis.com/photo-analyzer-storage/'
+
+function extractGcsPath(publicUrl) {
+  if (!publicUrl || !publicUrl.startsWith(BUCKET_URL)) return null
+  return publicUrl.slice(BUCKET_URL.length)
+}
+
+/**
+ * Resolves signed URLs for an array of photo objects.
+ * Mutates thumbUrl/originalUrl/rawUrl in-place and returns the array.
+ * Batches uncached paths into a single API call.
+ */
+export async function resolveSignedUrls(photos) {
+  if (!photos || photos.length === 0) return photos
+
+  const now = Date.now()
+  const uncachedPaths = new Set()
+
+  // Collect all GCS paths that need signing
+  for (const photo of photos) {
+    for (const key of ['thumbUrl', 'originalUrl', 'rawUrl']) {
+      const path = extractGcsPath(photo[key])
+      if (!path) continue
+      const cached = signedUrlCache.get(path)
+      if (!cached || cached.expires < now) {
+        uncachedPaths.add(path)
+      }
+    }
+  }
+
+  // Fetch missing signed URLs in one batch
+  if (uncachedPaths.size > 0) {
+    try {
+      const paths = [...uncachedPaths]
+      // Split into chunks of 200
+      for (let i = 0; i < paths.length; i += 200) {
+        const chunk = paths.slice(i, i + 200)
+        const signed = await cloudRunPost('/api/signed-urls', { paths: chunk })
+        const expires = now + SIGNED_URL_TTL
+        for (const [path, url] of Object.entries(signed)) {
+          signedUrlCache.set(path, { url, expires })
+        }
+      }
+    } catch (err) {
+      console.error('[SignedURL] Failed to fetch signed URLs:', err)
+      return photos // Return with original URLs as fallback
+    }
+  }
+
+  // Replace URLs with cached signed versions
+  for (const photo of photos) {
+    for (const key of ['thumbUrl', 'originalUrl', 'rawUrl']) {
+      const path = extractGcsPath(photo[key])
+      if (!path) continue
+      const cached = signedUrlCache.get(path)
+      if (cached && cached.expires > now) {
+        photo[key] = cached.url
+      }
+    }
+  }
+
+  return photos
+}
+
 // ===== URL Helpers =====
 
 export function getThumbUrl(photo) {
