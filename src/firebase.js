@@ -125,7 +125,8 @@ export function subscribePending(ownerEmail, callback) {
   return onSnapshot(q, (snapshot) => {
     const photos = snapshot.docs.map(doc => ({
       ...doc.data(),
-      filename: doc.id,
+      filename: doc.data().filename || doc.id,
+      docId: doc.id,
     }))
     console.log(`[Firestore] Pending: ${photos.length} fotos (owner=${ownerEmail})`)
     callback(photos)
@@ -147,7 +148,8 @@ export function subscribeReviewed(ownerEmail, callback) {
   return onSnapshot(q, (snapshot) => {
     const photos = snapshot.docs.map(doc => ({
       ...doc.data(),
-      filename: doc.id,
+      filename: doc.data().filename || doc.id,
+      docId: doc.id,
     }))
     console.log(`[Firestore] Reviewed: ${photos.length} fotos (owner=${ownerEmail})`)
     callback(photos)
