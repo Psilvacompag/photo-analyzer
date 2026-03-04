@@ -38,18 +38,23 @@ const auth = getAuth(app)
 const googleProvider = new GoogleAuthProvider()
 
 // ==========================================
-// Correos autorizados (whitelist)
+// Correos autorizados (Firestore whitelist)
 // ==========================================
-const ALLOWED_EMAILS = [
-  'darkside.dx@gmail.com',
-  'zachriel@gmail.com',
-]
 
 /**
- * Verifica si un email está autorizado.
+ * Verifica si un email está autorizado consultando Firestore.
+ * Retorna true/false. Cache implícito via Firestore SDK.
  */
-export function isEmailAllowed(email) {
-  return ALLOWED_EMAILS.includes(email?.toLowerCase())
+export async function isEmailAllowed(email) {
+  if (!email) return false
+  try {
+    const docRef = doc(db, 'authorized_users', email.toLowerCase())
+    const snap = await getDoc(docRef)
+    return snap.exists()
+  } catch (err) {
+    console.error('[Auth] Error checking authorized_users:', err)
+    return false
+  }
 }
 
 /**
@@ -60,7 +65,8 @@ export async function signInWithGoogle() {
   const result = await signInWithPopup(auth, googleProvider)
   const user = result.user
 
-  if (!isEmailAllowed(user.email)) {
+  const allowed = await isEmailAllowed(user.email)
+  if (!allowed) {
     await signOut(auth)
     throw new Error('NOT_AUTHORIZED')
   }
@@ -80,13 +86,16 @@ export async function logOut() {
  * callback(user) - user es null si no hay sesión.
  */
 export function onAuthChange(callback) {
-  return onAuthStateChanged(auth, (user) => {
-    if (user && !isEmailAllowed(user.email)) {
-      signOut(auth)
-      callback(null)
-    } else {
-      callback(user)
+  return onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const allowed = await isEmailAllowed(user.email)
+      if (!allowed) {
+        await signOut(auth)
+        callback(null)
+        return
+      }
     }
+    callback(user)
   })
 }
 
