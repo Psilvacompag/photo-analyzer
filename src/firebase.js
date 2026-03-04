@@ -123,15 +123,14 @@ export function subscribePending(ownerEmail, callback) {
 
   const q = query(collection(db, 'photos'), ...constraints)
 
-  return onSnapshot(q, async (snapshot) => {
+  return onSnapshot(q, (snapshot) => {
     const photos = snapshot.docs.map(doc => ({
       ...doc.data(),
       filename: doc.data().filename || doc.id,
       docId: doc.id,
     }))
     console.log(`[Firestore] Pending: ${photos.length} fotos (owner=${ownerEmail})`)
-    await resolveSignedUrls(photos)
-    callback(photos)
+    resolveSignedUrls(photos).then(() => callback(photos)).catch(() => callback(photos))
   }, (error) => {
     console.error('[Firestore] Error en pending listener:', error)
     callback([])
@@ -147,15 +146,14 @@ export function subscribeReviewed(ownerEmail, callback) {
 
   const q = query(collection(db, 'photos'), ...constraints)
 
-  return onSnapshot(q, async (snapshot) => {
+  return onSnapshot(q, (snapshot) => {
     const photos = snapshot.docs.map(doc => ({
       ...doc.data(),
       filename: doc.data().filename || doc.id,
       docId: doc.id,
     }))
     console.log(`[Firestore] Reviewed: ${photos.length} fotos (owner=${ownerEmail})`)
-    await resolveSignedUrls(photos)
-    callback(photos)
+    resolveSignedUrls(photos).then(() => callback(photos)).catch(() => callback(photos))
   }, (error) => {
     console.error('[Firestore] Error en reviewed listener:', error)
     callback([])
