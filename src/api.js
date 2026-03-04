@@ -3,23 +3,30 @@
 // ==========================================
 // Reads: Firebase SDK directo a Firestore
 // Writes: Cloud Run API (review, discard, delete, coaching, analytics)
+// Auth: Firebase ID token (Bearer)
 // ==========================================
+
+import { getIdToken } from './firebase'
 
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL ||
   'https://photo-analyzer-agent-81488981381.southamerica-east1.run.app'
-const API_KEY =
-  import.meta.env.VITE_API_KEY || 'd9aLhZ5SogBEZyse8rnTDrSSJWKqc3mv5OWbk1VpxsY'
 
 // ===== HTTP helpers =====
 
+async function getAuthHeaders() {
+  const token = await getIdToken()
+  if (!token) throw new Error('No autenticado')
+  return { Authorization: `Bearer ${token}` }
+}
+
 async function cloudRunGet(endpoint, params = {}, retries = 1) {
   const url = new URL(`${BACKEND_URL}${endpoint}`)
-  url.searchParams.set('key', API_KEY)
   Object.entries(params).forEach(([k, v]) => {
     if (v !== undefined && v !== null) url.searchParams.set(k, String(v))
   })
-  const response = await fetch(url.toString())
+  const headers = await getAuthHeaders()
+  const response = await fetch(url.toString(), { headers })
   if (response.status === 503 && retries > 0) {
     await new Promise(r => setTimeout(r, 1500))
     return cloudRunGet(endpoint, params, retries - 1)
@@ -32,10 +39,10 @@ async function cloudRunGet(endpoint, params = {}, retries = 1) {
 
 async function cloudRunPost(endpoint, body = {}, retries = 1) {
   const url = new URL(`${BACKEND_URL}${endpoint}`)
-  url.searchParams.set('key', API_KEY)
+  const authHeaders = await getAuthHeaders()
   const response = await fetch(url.toString(), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify(body),
   })
   if (response.status === 503 && retries > 0) {
