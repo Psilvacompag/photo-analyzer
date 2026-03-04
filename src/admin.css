@@ -46,10 +46,11 @@
   display: flex;
   gap: 10px;
   margin-bottom: 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  border: var(--glass-border);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-sm);
 }
 
 .admin-input {
@@ -107,10 +108,11 @@
 
 /* Table */
 .admin-table-wrap {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  border: var(--glass-border);
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .admin-table {

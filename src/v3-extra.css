@@ -15,15 +15,6 @@
   box-shadow: 0 0 6px var(--green, #22c55e);
 }
 
-/* Danger button for toolbar */
-.toolbar-btn.danger {
-  background: #dc2626;
-  color: white;
-}
-.toolbar-btn.danger:hover {
-  background: #b91c1c;
-}
-
 /* ==========================================
    Login Screen
    ========================================== */
@@ -37,14 +28,16 @@
 }
 
 .login-card {
-  background: var(--surface, #16161e);
-  border: 1px solid var(--border, #2a2a3a);
-  border-radius: 1.25rem;
+  background: var(--surface);
+  backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-xl);
   padding: 3rem 2.5rem;
   text-align: center;
   max-width: 380px;
   width: 100%;
   animation: fadeUp 0.4s ease;
+  box-shadow: var(--shadow-lg);
 }
 
 @keyframes fadeUp {
@@ -81,14 +74,14 @@
   gap: 0.75rem;
   width: 100%;
   padding: 0.85rem 1.5rem;
-  background: var(--surface2, #1e1e2a);
-  border: 1px solid var(--border, #2a2a3a);
-  border-radius: 0.75rem;
-  color: var(--text, #e4e4e7);
+  background: var(--surface2);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text);
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .login-btn:hover:not(:disabled) {
@@ -171,12 +164,13 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  background: var(--surface, #16161e);
-  border: 1px solid var(--border, #2a2a3a);
-  border-radius: 0.75rem;
+  background: var(--surface);
+  backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
   min-width: 260px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-  animation: dropdownIn 0.15s ease;
+  box-shadow: var(--shadow-lg);
+  animation: dropdownIn 0.15s var(--ease-spring);
   z-index: 100;
   overflow: hidden;
 }
@@ -361,16 +355,17 @@
 
 .toast {
   padding: 0.75rem 1.25rem;
-  background: var(--surface, #16161e);
-  border: 1px solid var(--border, #2a2a3a);
-  border-radius: 0.75rem;
-  color: var(--text, #e4e4e7);
+  background: var(--surface);
+  backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text);
   font-size: 0.9rem;
   font-weight: 500;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-md);
   opacity: 0;
   transform: translateY(8px) scale(0.95);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s var(--ease-smooth);
   white-space: nowrap;
   pointer-events: auto;
 }
@@ -453,14 +448,14 @@
 }
 
 .date-clear {
-  font-size: 0.72em !important;
-  padding: 5px 10px !important;
-  color: var(--red, #f87171) !important;
-  border-color: rgba(248, 113, 113, 0.3) !important;
+  font-size: var(--text-xs);
+  padding: 5px 10px;
+  color: var(--red);
+  border-color: rgba(248, 113, 113, 0.3);
 }
 
 .date-clear:hover {
-  background: rgba(248, 113, 113, 0.1) !important;
+  background: rgba(248, 113, 113, 0.1);
 }
 
 /* ==========================================
@@ -580,12 +575,12 @@
    Secondary toolbar button
    ========================================== */
 .toolbar-btn.secondary {
-  background: var(--surface2, #1e1e2a);
-  border: 1px solid var(--border, #2a2a3a);
-  color: var(--text, #e4e4e7);
+  background: var(--surface2);
+  border: var(--glass-border);
+  color: var(--text);
 }
 .toolbar-btn.secondary:hover {
-  border-color: var(--accent, #818cf8);
+  border: var(--glass-border-hover);
   background: rgba(108, 140, 255, 0.1);
 }
 .toolbar-btn.secondary:disabled {

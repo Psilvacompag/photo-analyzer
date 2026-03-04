@@ -39,12 +39,17 @@
 }
 
 .kpi-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  border: var(--glass-border);
   border-radius: var(--radius);
   padding: 16px;
   text-align: center;
   animation: fadeSlideUp 0.4s ease both;
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--duration-fast), box-shadow var(--duration-normal);
+}
+.kpi-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .kpi-value {
@@ -95,16 +100,18 @@
 }
 
 .chart-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  border: var(--glass-border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: var(--sp-5);
   animation: fadeSlideUp 0.4s ease both;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-normal);
+  box-shadow: var(--shadow-sm);
 }
 
 .chart-card:hover {
-  border-color: var(--border2);
+  border: var(--glass-border-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .chart-title {

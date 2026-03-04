@@ -47,10 +47,10 @@
 
 .lv-row {
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 .lv-row:hover {
-  background: var(--surface);
+  background: var(--surface-solid);
 }
 .lv-row.lv-selected {
   background: rgba(108, 140, 255, 0.08);

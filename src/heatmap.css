@@ -1,14 +1,16 @@
 /* ===== Calendar Heatmap ===== */
 .heatmap-wrap {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius, 14px);
-  padding: 20px;
-  margin-bottom: 20px;
-  transition: border-color 0.2s;
+  background: var(--surface-solid);
+  border: var(--glass-border);
+  border-radius: var(--radius);
+  padding: var(--sp-5);
+  margin-bottom: var(--sp-5);
+  transition: border-color var(--duration-fast), box-shadow var(--duration-normal);
+  box-shadow: var(--shadow-sm);
 }
 .heatmap-wrap:hover {
-  border-color: var(--border2);
+  border: var(--glass-border-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .heatmap-header {

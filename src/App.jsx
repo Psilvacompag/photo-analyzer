@@ -1375,7 +1375,7 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, rem
   return (
     <div
       className={`photo-card ${isSelected ? 'selected' : ''} ${isProcessing ? 'processing' : ''} ${isRemoving ? 'removing' : ''} ${isFocused ? 'focused' : ''}`}
-      style={{ animationDelay: `${Math.min(index, 12) * 50}ms` }}
+      style={{ animationDelay: `${Math.min(index, 15) * 0.03}s` }}
       onClick={e => {
         if (e.target.closest('.dl-actions') || e.target.closest('.tag-pill') || e.target.closest('.view-btn')) return
         if (isProcessing || isRemoving) return

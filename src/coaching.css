@@ -13,9 +13,10 @@
   align-items: center;
   text-align: center;
   padding: 60px 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  border: var(--glass-border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .coaching-cta-icon {
@@ -187,17 +188,19 @@
 
 /* Cards */
 .coaching-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  border: var(--glass-border);
   border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 16px;
+  padding: var(--sp-5);
+  margin-bottom: var(--sp-4);
   animation: fadeSlideUp 0.4s ease both;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-normal);
+  box-shadow: var(--shadow-sm);
 }
 
 .coaching-card:hover {
-  border-color: var(--border2);
+  border: var(--glass-border-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .coaching-card p {
@@ -211,8 +214,8 @@
   display: flex;
   gap: 16px;
   align-items: flex-start;
-  border-color: rgba(108, 140, 255, 0.3);
-  background: linear-gradient(135deg, var(--surface), rgba(108, 140, 255, 0.04));
+  border-color: rgba(108, 140, 255, 0.2);
+  background: linear-gradient(135deg, var(--surface-solid), rgba(108, 140, 255, 0.04));
 }
 
 .coaching-resumen-icon {
@@ -333,8 +336,8 @@
 
 /* Mission */
 .coaching-mission {
-  border-color: rgba(167, 139, 250, 0.3);
-  background: linear-gradient(135deg, var(--surface), rgba(167, 139, 250, 0.04));
+  border-color: rgba(167, 139, 250, 0.2);
+  background: linear-gradient(135deg, var(--surface-solid), rgba(167, 139, 250, 0.04));
   position: relative;
   overflow: hidden;
 }
