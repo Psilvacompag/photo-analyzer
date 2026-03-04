@@ -95,51 +95,71 @@ function extractGcsPath(publicUrl) {
   return publicUrl.slice(BUCKET_URL.length)
 }
 
-/**
- * Resolves signed URLs for thumbnails only (batch).
- * Mutates thumbUrl in-place. originalUrl/rawUrl stay as-is (signed on-demand).
- */
-export async function resolveSignedUrls(photos) {
-  if (!photos || photos.length === 0) return photos
+// Pending batch: collect individual requests into a single API call
+let _batchQueue = []       // [{ path, resolve }]
+let _batchTimer = null
+const BATCH_DELAY = 50     // ms to wait before flushing batch
+
+function _flushBatch() {
+  const batch = _batchQueue.splice(0)
+  _batchTimer = null
+  if (batch.length === 0) return
 
   const now = Date.now()
-  const uncachedPaths = []
+  const uncached = []
+  const cached = []
 
-  for (const photo of photos) {
-    const path = extractGcsPath(photo.thumbUrl)
-    if (!path) continue
-    const cached = signedUrlCache.get(path)
-    if (!cached || cached.expires < now) {
-      uncachedPaths.push(path)
+  for (const item of batch) {
+    const c = signedUrlCache.get(item.path)
+    if (c && c.expires > now) {
+      cached.push(item)
+    } else {
+      uncached.push(item)
     }
   }
 
-  if (uncachedPaths.length > 0) {
-    try {
-      for (let i = 0; i < uncachedPaths.length; i += 200) {
-        const chunk = uncachedPaths.slice(i, i + 200)
-        const signed = await cloudRunPost('/api/signed-urls', { paths: chunk })
-        const expires = now + SIGNED_URL_TTL
-        for (const [path, url] of Object.entries(signed)) {
-          signedUrlCache.set(path, { url, expires })
-        }
-      }
-    } catch (err) {
-      console.error('[SignedURL] Failed to fetch signed URLs:', err)
-      return photos
-    }
+  // Resolve cached immediately
+  for (const item of cached) {
+    item.resolve(signedUrlCache.get(item.path).url)
   }
 
-  for (const photo of photos) {
-    const path = extractGcsPath(photo.thumbUrl)
-    if (!path) continue
-    const cached = signedUrlCache.get(path)
-    if (cached && cached.expires > now) {
-      photo.thumbUrl = cached.url
-    }
-  }
+  if (uncached.length === 0) return
 
-  return photos
+  // Fetch uncached in one batch call
+  const paths = [...new Set(uncached.map(i => i.path))]
+  cloudRunPost('/api/signed-urls', { paths }).then(signed => {
+    const expires = now + SIGNED_URL_TTL
+    for (const [path, url] of Object.entries(signed)) {
+      signedUrlCache.set(path, { url, expires })
+    }
+    for (const item of uncached) {
+      const c = signedUrlCache.get(item.path)
+      item.resolve(c ? c.url : item.path)
+    }
+  }).catch(err => {
+    console.error('[SignedURL] Batch failed:', err)
+    for (const item of uncached) item.resolve(null)
+  })
+}
+
+/**
+ * Resolve a single public GCS URL to a signed URL.
+ * Batches requests: calls within 50ms window are grouped into one API call.
+ */
+export function resolveSignedUrl(publicUrl) {
+  const path = extractGcsPath(publicUrl)
+  if (!path) return Promise.resolve(publicUrl)
+
+  const now = Date.now()
+  const cached = signedUrlCache.get(path)
+  if (cached && cached.expires > now) return Promise.resolve(cached.url)
+
+  return new Promise(resolve => {
+    _batchQueue.push({ path, resolve })
+    if (!_batchTimer) {
+      _batchTimer = setTimeout(_flushBatch, BATCH_DELAY)
+    }
+  })
 }
 
 /**

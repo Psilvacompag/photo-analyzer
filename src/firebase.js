@@ -23,7 +23,6 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
 } from 'firebase/auth'
-import { resolveSignedUrls } from './api'
 
 const firebaseConfig = {
   apiKey: "AIzaSyC4TukkPAPm3zemEQw_v297HgmUN70zYt8",
@@ -130,7 +129,7 @@ export function subscribePending(ownerEmail, callback) {
       docId: doc.id,
     }))
     console.log(`[Firestore] Pending: ${photos.length} fotos (owner=${ownerEmail})`)
-    resolveSignedUrls(photos).then(() => callback(photos)).catch(() => callback(photos))
+    callback(photos)
   }, (error) => {
     console.error('[Firestore] Error en pending listener:', error)
     callback([])
@@ -153,7 +152,7 @@ export function subscribeReviewed(ownerEmail, callback) {
       docId: doc.id,
     }))
     console.log(`[Firestore] Reviewed: ${photos.length} fotos (owner=${ownerEmail})`)
-    resolveSignedUrls(photos).then(() => callback(photos)).catch(() => callback(photos))
+    callback(photos)
   }, (error) => {
     console.error('[Firestore] Error en reviewed listener:', error)
     callback([])
