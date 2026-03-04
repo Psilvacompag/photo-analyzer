@@ -732,26 +732,27 @@
   }
 
   .pill {
-    padding: 10px 16px;
-    font-size: 0.82em;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
   }
 
   .small-btn {
-    padding: 10px 16px;
-    font-size: 0.82em;
-    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 0.8em;
+    min-height: 38px;
   }
 
   .toolbar-btn {
-    padding: 12px 20px;
-    font-size: 0.9em;
-    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 0.85em;
+    min-height: 40px;
   }
 
   .dl-chip {
-    padding: 8px 14px;
-    font-size: 0.75em;
-    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 0.72em;
+    min-height: 32px;
   }
 
   .view-btn {
