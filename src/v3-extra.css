@@ -594,9 +594,10 @@
 .kbd-hints {
   font-size: 0.7em;
   color: var(--text3, #55556a);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 4px;
 }
 
 .kbd-hints kbd {
