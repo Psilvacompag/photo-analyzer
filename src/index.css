@@ -822,19 +822,20 @@ body {
 
   /* Lightbox mobile — full screen, scrollable */
   .lightbox-overlay {
-    align-items: flex-start; justify-content: flex-start;
-    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    align-items: stretch; justify-content: stretch;
+    overflow-y: scroll; -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
-  .lightbox-content { width: 100vw; max-width: 100vw; max-height: none; margin: 0; }
+  .lightbox-content { width: 100vw; max-width: 100vw; max-height: none; margin: 0; overflow: visible; }
   .lb-layout {
-    flex-direction: column; height: auto; min-height: 100vh;
+    flex-direction: column; height: auto; min-height: auto;
     border-radius: 0; overflow: visible;
   }
   .lb-image-wrap { min-height: 35vh; max-height: 45vh; flex-shrink: 0; }
   .lb-image-wrap img { max-height: 45vh; }
   .lb-detail {
     width: 100%; border-left: none; border-top: 1px solid var(--border);
-    max-height: none; flex-shrink: 0; padding: var(--sp-4);
+    max-height: none; overflow: visible; padding: var(--sp-4);
   }
   .lb-nav { display: none; }
   .lb-swipe-hint { display: block; }

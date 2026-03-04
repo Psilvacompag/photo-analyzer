@@ -541,6 +541,16 @@ function Gallery({ user }) {
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
+  // Lock body scroll when lightbox is open (prevents background scroll on mobile)
+  useEffect(() => {
+    if (lightbox) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [lightbox])
+
   function closeLightbox() {
     if (lightboxPushedRef.current) {
       lightboxPushedRef.current = false
