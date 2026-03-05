@@ -214,7 +214,7 @@ function LazyImage({ src, alt }) {
   const [error, setError] = useState(false)
   const [retries, setRetries] = useState(0)
   const [signedSrc, setSignedSrc] = useState(null)
-  const MAX_RETRIES = 3
+  const MAX_RETRIES = 6
 
   useEffect(() => {
     setLoaded(false)
@@ -233,14 +233,18 @@ function LazyImage({ src, alt }) {
     return () => { cancelled = true }
   }, [isVisible, src, signedSrc])
 
+  // On error: invalidate cache, re-sign, and retry with backoff
   useEffect(() => {
     if (!error || retries >= MAX_RETRIES) return
+    const delay = Math.min(3000 * Math.pow(1.5, retries), 15000)
     const t = setTimeout(() => {
+      api.invalidateSignedUrl(src)
+      setSignedSrc(null)
       setError(false)
       setRetries(r => r + 1)
-    }, 3000)
+    }, delay)
     return () => clearTimeout(t)
-  }, [error, retries])
+  }, [error, retries, src])
 
   const imgSrc = signedSrc ? `${signedSrc}${retries ? `&r=${retries}` : ''}` : null
 

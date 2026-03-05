@@ -163,6 +163,14 @@ export function resolveSignedUrl(publicUrl) {
 }
 
 /**
+ * Invalidate a signed URL from cache (forces re-sign on next resolve).
+ */
+export function invalidateSignedUrl(publicUrl) {
+  const path = extractGcsPath(publicUrl)
+  if (path) signedUrlCache.delete(path)
+}
+
+/**
  * Resolves signed URLs for a single photo's originalUrl and rawUrl (on-demand).
  * Called when opening lightbox or downloading.
  */
