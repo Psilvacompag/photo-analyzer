@@ -10,7 +10,10 @@ import {
   query,
   where,
   orderBy,
+  limit,
+  startAfter,
   onSnapshot,
+  getDocs,
   doc,
   getDoc,
   setDoc,
@@ -110,53 +113,93 @@ export async function getIdToken() {
 }
 
 // ==========================================
-// Firestore listeners (multi-tenant)
+// Firestore listeners (multi-tenant, paginated)
 // ==========================================
 
+const PAGE_SIZE = 50
+
+function _mapDocs(snapshot) {
+  return snapshot.docs.map(d => ({
+    ...d.data(),
+    filename: d.data().filename || d.id,
+    docId: d.id,
+    _snap: d, // keep doc snapshot for startAfter cursor
+  }))
+}
+
+/**
+ * Creates a paginated Firestore subscription.
+ * First page: onSnapshot (real-time). Subsequent pages: getDocs (static).
+ * Returns { unsubscribe, loadMore }.
+ * callback(photos, hasMore) — called on each update or loadMore.
+ */
+function _paginatedSubscription(baseConstraints, label, callback) {
+  let livePhotos = []    // first page (real-time)
+  let olderPhotos = []   // pages loaded via loadMore
+  let hasMore = true
+  let lastLiveSnap = null
+  let loadingMore = false
+
+  function _emit() {
+    const liveIds = new Set(livePhotos.map(p => p.docId))
+    const merged = [...livePhotos, ...olderPhotos.filter(p => !liveIds.has(p.docId))]
+    callback(merged, hasMore)
+  }
+
+  const q = query(collection(db, 'photos'), ...baseConstraints, limit(PAGE_SIZE))
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    livePhotos = _mapDocs(snapshot)
+    if (snapshot.docs.length > 0) {
+      lastLiveSnap = snapshot.docs[snapshot.docs.length - 1]
+    }
+    if (snapshot.docs.length < PAGE_SIZE && olderPhotos.length === 0) hasMore = false
+    console.log(`[Firestore] ${label}: ${livePhotos.length} live + ${olderPhotos.length} older`)
+    _emit()
+  }, (error) => {
+    console.error(`[Firestore] Error en ${label} listener:`, error)
+    callback([], false)
+  })
+
+  async function loadMore() {
+    if (!hasMore || loadingMore) return
+    const cursor = olderPhotos.length > 0
+      ? olderPhotos[olderPhotos.length - 1]._snap
+      : lastLiveSnap
+    if (!cursor) return
+    loadingMore = true
+    try {
+      const nextQ = query(collection(db, 'photos'), ...baseConstraints, startAfter(cursor), limit(PAGE_SIZE))
+      const snapshot = await getDocs(nextQ)
+      const newPhotos = _mapDocs(snapshot)
+      if (newPhotos.length < PAGE_SIZE) hasMore = false
+      olderPhotos = [...olderPhotos, ...newPhotos]
+      console.log(`[Firestore] ${label} loadMore: +${newPhotos.length} (total older=${olderPhotos.length})`)
+      _emit()
+    } catch (e) {
+      console.error(`[Firestore] Error loading more ${label}:`, e)
+    } finally {
+      loadingMore = false
+    }
+  }
+
+  return { unsubscribe, loadMore }
+}
+
 export function subscribePending(ownerEmail, callback) {
-  const constraints = [
+  return _paginatedSubscription([
     where('status', '==', 'pending'),
     where('owner', '==', ownerEmail),
     orderBy('uploadedAt', 'desc'),
-  ]
-
-  const q = query(collection(db, 'photos'), ...constraints)
-
-  return onSnapshot(q, (snapshot) => {
-    const photos = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      filename: doc.data().filename || doc.id,
-      docId: doc.id,
-    }))
-    console.log(`[Firestore] Pending: ${photos.length} fotos (owner=${ownerEmail})`)
-    callback(photos)
-  }, (error) => {
-    console.error('[Firestore] Error en pending listener:', error)
-    callback([])
-  })
+  ], 'Pending', callback)
 }
 
 export function subscribeReviewed(ownerEmail, callback) {
-  const constraints = [
+  return _paginatedSubscription([
     where('status', '==', 'reviewed'),
     where('owner', '==', ownerEmail),
     orderBy('uploadedAt', 'desc'),
-  ]
-
-  const q = query(collection(db, 'photos'), ...constraints)
-
-  return onSnapshot(q, (snapshot) => {
-    const photos = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      filename: doc.data().filename || doc.id,
-      docId: doc.id,
-    }))
-    console.log(`[Firestore] Reviewed: ${photos.length} fotos (owner=${ownerEmail})`)
-    callback(photos)
-  }, (error) => {
-    console.error('[Firestore] Error en reviewed listener:', error)
-    callback([])
-  })
+  ], 'Reviewed', callback)
 }
 
 export async function getPhotoDetail(docId) {

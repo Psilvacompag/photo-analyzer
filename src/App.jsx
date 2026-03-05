@@ -261,6 +261,31 @@ function LazyImage({ src, alt }) {
 }
 
 // ==========================================
+// LOAD MORE SENTINEL (infinite scroll)
+// ==========================================
+function LoadMoreSentinel({ hasMore, onLoadMore }) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!hasMore || !onLoadMore) return
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) onLoadMore()
+    }, { rootMargin: '400px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [hasMore, onLoadMore])
+
+  if (!hasMore) return null
+  return (
+    <div ref={ref} style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem 0', opacity: 0.5 }}>
+      Cargando más fotos...
+    </div>
+  )
+}
+
+// ==========================================
 // SCORE BAR
 // ==========================================
 function ScoreBar({ score }) {
@@ -374,6 +399,10 @@ function Gallery({ user }) {
   const [pending, setPending] = useState([])
   const [reviewed, setReviewed] = useState([])
   const [loading, setLoading] = useState(true)
+  const [hasMorePending, setHasMorePending] = useState(false)
+  const [hasMoreReviewed, setHasMoreReviewed] = useState(false)
+  const loadMorePendingRef = useRef(null)
+  const loadMoreReviewedRef = useRef(null)
   const [selected, setSelected] = useState({})
   const [processing, setProcessing] = useState({})
   const [removing, setRemoving] = useState({})
@@ -450,19 +479,23 @@ function Gallery({ user }) {
       })
     }
 
-    const unsubPending = subscribePending(user.email, (photos) => {
+    const pendingSub = subscribePending(user.email, (photos, hasMore) => {
       setPending(photos)
+      setHasMorePending(hasMore)
       pendingLoaded = true
       markLoaded()
       cleanRemoving(photos)
     })
+    loadMorePendingRef.current = pendingSub.loadMore
 
-    const unsubReviewed = subscribeReviewed(user.email, (photos) => {
+    const reviewedSub = subscribeReviewed(user.email, (photos, hasMore) => {
       setReviewed(photos)
+      setHasMoreReviewed(hasMore)
       reviewedLoaded = true
       markLoaded()
       cleanRemoving(photos)
     })
+    loadMoreReviewedRef.current = reviewedSub.loadMore
 
     const timeout = setTimeout(() => {
       if (!pendingLoaded || !reviewedLoaded) {
@@ -472,8 +505,10 @@ function Gallery({ user }) {
     }, 10000)
 
     return () => {
-      unsubPending()
-      unsubReviewed()
+      pendingSub.unsubscribe()
+      reviewedSub.unsubscribe()
+      loadMorePendingRef.current = null
+      loadMoreReviewedRef.current = null
       clearTimeout(timeout)
     }
   }, [showToast, user.email])
@@ -1130,6 +1165,8 @@ function Gallery({ user }) {
               <p className="empty-sub">Las fotos aparecerán automáticamente cuando lleguen al bucket</p>
             </div>
           )}
+
+          <LoadMoreSentinel hasMore={hasMorePending} onLoadMore={() => loadMorePendingRef.current?.()} />
         </div>
       )}
 
@@ -1184,6 +1221,8 @@ function Gallery({ user }) {
               )}
             </div>
           )}
+
+          <LoadMoreSentinel hasMore={hasMoreReviewed} onLoadMore={() => loadMoreReviewedRef.current?.()} />
         </div>
       )}
 
