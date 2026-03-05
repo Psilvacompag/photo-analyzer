@@ -403,6 +403,7 @@ function Gallery({ user }) {
   const [hasMoreReviewed, setHasMoreReviewed] = useState(false)
   const [pendingCount, setPendingCount] = useState(null)
   const [reviewedCount, setReviewedCount] = useState(null)
+  const [statsData, setStatsData] = useState(null) // from /api/analytics
   const loadMorePendingRef = useRef(null)
   const loadMoreReviewedRef = useRef(null)
   const [selected, setSelected] = useState({})
@@ -516,6 +517,11 @@ function Gallery({ user }) {
       clearTimeout(timeout)
     }
   }, [showToast, user.email])
+
+  // Fetch global stats (avg score, bestOf count) from backend
+  useEffect(() => {
+    api.fetchAnalytics().then(data => setStatsData(data)).catch(() => {})
+  }, [])
 
   // ===== SELECTION =====
   function toggleSelect(fn) {
@@ -978,10 +984,8 @@ function Gallery({ user }) {
   useEffect(() => { setFocusedIndex(-1) }, [tab])
 
   // ===== COMPUTED =====
-  const avg = reviewed.length > 0
-    ? (reviewed.reduce((s, r) => s + (r.score || 0), 0) / reviewed.length).toFixed(1)
-    : '—'
-  const bestCount = reviewed.filter(r => r.bestOf).length
+  const avg = statsData?.avg_score != null ? statsData.avg_score.toFixed(1) : '—'
+  const bestCount = statsData?.bestOf_count ?? reviewed.filter(r => r.bestOf).length
 
   const hasDateFilter = dateFrom || dateTo
   function clearDateFilter() { setDateFrom(''); setDateTo('') }
