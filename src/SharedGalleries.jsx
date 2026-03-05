@@ -10,19 +10,6 @@ const CAT_ICONS = {
 function SharedLazyImage({ src, alt, onClick }) {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
-  const [signedSrc, setSignedSrc] = useState(null)
-
-  useEffect(() => {
-    setLoaded(false)
-    setError(false)
-    setSignedSrc(null)
-    if (!src) return
-    let cancelled = false
-    api.resolveSignedUrl(src).then(url => {
-      if (!cancelled) setSignedSrc(url)
-    })
-    return () => { cancelled = true }
-  }, [src])
 
   if (error) {
     return <div className="shared-img-placeholder">📷</div>
@@ -31,9 +18,9 @@ function SharedLazyImage({ src, alt, onClick }) {
   return (
     <div onClick={onClick} style={{ cursor: 'pointer', width: '100%', height: '100%' }}>
       {!loaded && <div className="shared-img-placeholder shimmer" />}
-      {signedSrc && (
+      {src && (
         <img
-          src={signedSrc}
+          src={src}
           alt={alt}
           className={`shared-img ${loaded ? 'loaded' : 'loading'}`}
           onLoad={() => setLoaded(true)}
@@ -49,14 +36,12 @@ function SharedLightbox({ photo, photos, onClose, onNavigate }) {
   const [signedOriginal, setSignedOriginal] = useState(null)
   const [imgLoaded, setImgLoaded] = useState(false)
 
-  // Sign original URL on open
+  // URLs already signed by backend for shared galleries
   useEffect(() => {
     setSignedOriginal(null)
     setImgLoaded(false)
     if (!photo) return
-    api.resolvePhotoUrls({ ...photo }).then(signed => {
-      setSignedOriginal(signed.originalUrl || signed.thumbUrl)
-    })
+    setSignedOriginal(photo.originalUrl || photo.thumbUrl)
   }, [photo?.filename])
 
   // Keyboard navigation
