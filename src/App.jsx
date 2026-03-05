@@ -246,7 +246,7 @@ function LazyImage({ src, alt }) {
     return () => clearTimeout(t)
   }, [error, retries, src])
 
-  const imgSrc = signedSrc ? `${signedSrc}${retries ? `&r=${retries}` : ''}` : null
+  const imgSrc = signedSrc || null
 
   return (
     <div ref={ref} style={{ width: '100%', height: '100%', position: 'relative' }}>
