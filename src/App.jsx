@@ -981,6 +981,7 @@ function Gallery({ user }) {
   // ===== COMPUTED =====
   const avg = statsData?.avg_score != null ? statsData.avg_score.toFixed(1) : '—'
 
+  const bestCount = statsData?.bestOf_count ?? reviewed.filter(r => r.bestOf).length
   const hasDateFilter = dateFrom || dateTo
   function clearDateFilter() { setDateFrom(''); setDateTo('') }
 
@@ -1025,6 +1026,10 @@ function Gallery({ user }) {
           <div className="stat-value">{avg}</div>
           <div className="stat-label">Score promedio</div>
           {avg !== '—' && <ScoreBar score={parseFloat(avg)} />}
+        </div>
+        <div className="stat-card">
+          <div className="stat-value" style={{ color: 'var(--green)' }}>{bestCount}</div>
+          <div className="stat-label">Best of</div>
         </div>
       </div>
 
@@ -1288,6 +1293,7 @@ function Gallery({ user }) {
                         {lightbox.photo.score.toFixed(1)}/10
                       </span>
                       <span className="cat-pill">{CAT_ICONS[lightbox.photo.category]} {lightbox.photo.category}</span>
+                      {lightbox.photo.bestOf && <span className="best-pill">⭐ Best Of</span>}
                     </div>
                     <ScoreBar score={lightbox.photo.score} />
                   </>
@@ -1431,6 +1437,7 @@ function ComparisonSide({ photo, detail }) {
           <div className="lb-score-row">
             <span className={`score-pill big ${scoreClass}`}>{score.toFixed(1)}/10</span>
             <span className="cat-pill">{CAT_ICONS[photo.category]} {photo.category}</span>
+            {photo.bestOf && <span className="best-pill">⭐ Best Of</span>}
           </div>
         )}
         {photo.resumen && <p className="lb-summary">{photo.resumen}</p>}
@@ -1475,6 +1482,7 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, rem
       </div>
 
       {tab === 'pending' && !isProcessing && !isRemoving && <div className="badge pending-badge">PENDIENTE</div>}
+      {photo.bestOf && !isRemoving && <div className="badge best-badge">⭐ BEST OF</div>}
       {isProcessing && (
         <div className="proc-overlay">
           <div className="spinner-ring" />
