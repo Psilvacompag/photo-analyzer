@@ -401,6 +401,8 @@ function Gallery({ user }) {
   const [loading, setLoading] = useState(true)
   const [hasMorePending, setHasMorePending] = useState(false)
   const [hasMoreReviewed, setHasMoreReviewed] = useState(false)
+  const [pendingCount, setPendingCount] = useState(null)
+  const [reviewedCount, setReviewedCount] = useState(null)
   const loadMorePendingRef = useRef(null)
   const loadMoreReviewedRef = useRef(null)
   const [selected, setSelected] = useState({})
@@ -479,18 +481,20 @@ function Gallery({ user }) {
       })
     }
 
-    const pendingSub = subscribePending(user.email, (photos, hasMore) => {
+    const pendingSub = subscribePending(user.email, (photos, hasMore, total) => {
       setPending(photos)
       setHasMorePending(hasMore)
+      if (total !== null) setPendingCount(total)
       pendingLoaded = true
       markLoaded()
       cleanRemoving(photos)
     })
     loadMorePendingRef.current = pendingSub.loadMore
 
-    const reviewedSub = subscribeReviewed(user.email, (photos, hasMore) => {
+    const reviewedSub = subscribeReviewed(user.email, (photos, hasMore, total) => {
       setReviewed(photos)
       setHasMoreReviewed(hasMore)
+      if (total !== null) setReviewedCount(total)
       reviewedLoaded = true
       markLoaded()
       cleanRemoving(photos)
@@ -1018,11 +1022,11 @@ function Gallery({ user }) {
       {/* STATS */}
       <div className="stats-grid">
         <div className="stat-card clickable" onClick={() => { setTab('pending'); clearSelection() }}>
-          <div className="stat-value" style={{ color: 'var(--yellow)' }}>{pending.length}</div>
+          <div className="stat-value" style={{ color: 'var(--yellow)' }}>{pendingCount ?? pending.length}</div>
           <div className="stat-label">Pendientes</div>
         </div>
         <div className="stat-card clickable" onClick={() => { setTab('reviewed'); clearSelection() }}>
-          <div className="stat-value" style={{ color: 'var(--accent)' }}>{reviewed.length}</div>
+          <div className="stat-value" style={{ color: 'var(--accent)' }}>{reviewedCount ?? reviewed.length}</div>
           <div className="stat-label">Revisadas</div>
         </div>
         <div className="stat-card">
@@ -1040,10 +1044,10 @@ function Gallery({ user }) {
       <div className="tabs-wrap">
         <div className="tabs">
           <button className={`tab ${tab === 'pending' ? 'active' : ''}`} onClick={() => { setTab('pending'); clearSelection() }}>
-            📥 Pendientes <span className="count">{pending.length}</span>
+            📥 Pendientes <span className="count">{pendingCount ?? pending.length}</span>
           </button>
           <button className={`tab ${tab === 'reviewed' ? 'active' : ''}`} onClick={() => { setTab('reviewed'); clearSelection() }}>
-            ✅ Revisadas <span className="count">{reviewed.length}</span>
+            ✅ Revisadas <span className="count">{reviewedCount ?? reviewed.length}</span>
           </button>
           <button className={`tab ${tab === 'analytics' ? 'active' : ''}`} onClick={() => { setTab('analytics'); clearSelection() }}>
             📊 Analytics

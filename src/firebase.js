@@ -14,6 +14,7 @@ import {
   startAfter,
   onSnapshot,
   getDocs,
+  getCountFromServer,
   doc,
   getDoc,
   setDoc,
@@ -131,7 +132,7 @@ function _mapDocs(snapshot) {
  * Creates a paginated Firestore subscription.
  * First page: onSnapshot (real-time). Subsequent pages: getDocs (static).
  * Returns { unsubscribe, loadMore }.
- * callback(photos, hasMore) — called on each update or loadMore.
+ * callback(photos, hasMore, totalCount) — called on each update or loadMore.
  */
 function _paginatedSubscription(baseConstraints, label, callback) {
   let livePhotos = []    // first page (real-time)
@@ -139,12 +140,21 @@ function _paginatedSubscription(baseConstraints, label, callback) {
   let hasMore = true
   let lastLiveSnap = null
   let loadingMore = false
+  let totalCount = null
 
   function _emit() {
     const liveIds = new Set(livePhotos.map(p => p.docId))
     const merged = [...livePhotos, ...olderPhotos.filter(p => !liveIds.has(p.docId))]
-    callback(merged, hasMore)
+    callback(merged, hasMore, totalCount)
   }
+
+  // Fetch total count (non-blocking)
+  const countQ = query(collection(db, 'photos'), ...baseConstraints)
+  getCountFromServer(countQ).then(snap => {
+    totalCount = snap.data().count
+    console.log(`[Firestore] ${label} total count: ${totalCount}`)
+    _emit()
+  }).catch(e => console.warn(`[Firestore] ${label} count failed:`, e))
 
   const q = query(collection(db, 'photos'), ...baseConstraints, limit(PAGE_SIZE))
 
@@ -158,7 +168,7 @@ function _paginatedSubscription(baseConstraints, label, callback) {
     _emit()
   }, (error) => {
     console.error(`[Firestore] Error en ${label} listener:`, error)
-    callback([], false)
+    callback([], false, 0)
   })
 
   async function loadMore() {
