@@ -11,9 +11,7 @@ import Coaching from './Coaching'
 import './coaching.css'
 import Upload from './Upload'
 import './upload.css'
-import Slideshow from './Slideshow'
 import ListView from './ListView'
-import PortfolioExport from './PortfolioExport'
 import AdminPanel from './AdminPanel'
 import './admin.css'
 import SharedGalleries from './SharedGalleries'
@@ -425,7 +423,6 @@ function Gallery({ user }) {
   const [downloading, setDownloading] = useState(false)
   const [minScore, setMinScore] = useState(0)
   const [viewMode, setViewMode] = useState('grid')
-  const [slideshowOpen, setSlideshowOpen] = useState(false)
   const [theme, setTheme] = useState(getTheme)
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -518,7 +515,7 @@ function Gallery({ user }) {
     }
   }, [showToast, user.email])
 
-  // Fetch global stats (avg score, bestOf count) from backend
+  // Fetch global stats from backend
   useEffect(() => {
     api.fetchAnalytics().then(data => setStatsData(data)).catch(() => {})
   }, [])
@@ -583,8 +580,6 @@ function Gallery({ user }) {
   const pendingSessions = useMemo(() => groupIntoSessions(pending), [pending])
   const reviewedSessions = useMemo(() => groupIntoSessions(filteredReviewed, { sortByScore: true }), [filteredReviewed])
 
-  // Best Of photos for slideshow
-  const bestOfPhotos = useMemo(() => reviewed.filter(r => r.bestOf), [reviewed])
 
   // ===== LIGHTBOX =====
   // Close lightbox on browser back button (mobile UX)
@@ -985,7 +980,6 @@ function Gallery({ user }) {
 
   // ===== COMPUTED =====
   const avg = statsData?.avg_score != null ? statsData.avg_score.toFixed(1) : '—'
-  const bestCount = statsData?.bestOf_count ?? reviewed.filter(r => r.bestOf).length
 
   const hasDateFilter = dateFrom || dateTo
   function clearDateFilter() { setDateFrom(''); setDateTo('') }
@@ -1005,11 +999,6 @@ function Gallery({ user }) {
           </div>
           <div className="header-right">
             <div className={`status-dot ${connected ? 'connected' : ''}`} title={connected ? 'Conectado a Firestore' : 'Conectando...'} />
-            {bestOfPhotos.length > 0 && (
-              <button className="slideshow-trigger-btn" onClick={() => setSlideshowOpen(true)}>
-                &#9654; Best Of ({bestOfPhotos.length})
-              </button>
-            )}
             <button
               className="theme-toggle-btn"
               onClick={() => { const t = toggleTheme(); setTheme(t) }}
@@ -1017,7 +1006,6 @@ function Gallery({ user }) {
             >
               {theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19'}
             </button>
-            <div className="camera-badge">◉ Sony A7V</div>
             <UserMenu user={user} onLogout={handleLogout} />
           </div>
         </div>
@@ -1037,10 +1025,6 @@ function Gallery({ user }) {
           <div className="stat-value">{avg}</div>
           <div className="stat-label">Score promedio</div>
           {avg !== '—' && <ScoreBar score={parseFloat(avg)} />}
-        </div>
-        <div className="stat-card">
-          <div className="stat-value" style={{ color: 'var(--green)' }}>{bestCount}</div>
-          <div className="stat-label">Best of</div>
         </div>
       </div>
 
@@ -1100,7 +1084,6 @@ function Gallery({ user }) {
                 ))}
               </div>
               <div className="select-actions">
-                <PortfolioExport photos={bestOfPhotos} showToast={showToast} />
                 <button className="view-toggle-btn" onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
                   title={viewMode === 'grid' ? 'Vista lista' : 'Vista grilla'}>
                   {viewMode === 'grid' ? (
@@ -1305,7 +1288,6 @@ function Gallery({ user }) {
                         {lightbox.photo.score.toFixed(1)}/10
                       </span>
                       <span className="cat-pill">{CAT_ICONS[lightbox.photo.category]} {lightbox.photo.category}</span>
-                      {lightbox.photo.bestOf && <span className="best-pill">⭐ Best Of</span>}
                     </div>
                     <ScoreBar score={lightbox.photo.score} />
                   </>
@@ -1415,10 +1397,6 @@ function Gallery({ user }) {
         </div>
       )}
 
-      {/* SLIDESHOW */}
-      {slideshowOpen && bestOfPhotos.length > 0 && (
-        <Slideshow photos={bestOfPhotos} onClose={() => setSlideshowOpen(false)} />
-      )}
 
       {/* TOAST */}
       <div className="toast-container">
@@ -1453,7 +1431,6 @@ function ComparisonSide({ photo, detail }) {
           <div className="lb-score-row">
             <span className={`score-pill big ${scoreClass}`}>{score.toFixed(1)}/10</span>
             <span className="cat-pill">{CAT_ICONS[photo.category]} {photo.category}</span>
-            {photo.bestOf && <span className="best-pill">⭐ Best Of</span>}
           </div>
         )}
         {photo.resumen && <p className="lb-summary">{photo.resumen}</p>}
@@ -1511,7 +1488,6 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, rem
           <div className="removing-progress" />
         </div>
       )}
-      {photo.bestOf && !isRemoving && <div className="badge best-badge">⭐ BEST OF</div>}
 
       <div className="card-img-wrap">
         <LazyImage src={thumbUrl} alt={photo.filename} />
