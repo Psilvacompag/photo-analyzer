@@ -618,11 +618,11 @@ function Gallery({ user }) {
     }
   }
 
-  async function openLightbox(photo) {
+  async function openLightbox(photoArg) {
     lightboxPushedRef.current = true
     window.history.pushState({ lightbox: true }, '')
-    // Sign originalUrl/rawUrl on-demand for lightbox
-    await api.resolvePhotoUrls(photo)
+    // Sign originalUrl/rawUrl on-demand for lightbox (returns clone, doesn't mutate source)
+    const photo = await api.resolvePhotoUrls(photoArg)
     setLightbox({ photo })
     setLightboxDetail(null)
     setPendingExif(null)
@@ -875,8 +875,8 @@ function Gallery({ user }) {
         const photo = allPhotos.find(p => p.filename === fn)
         if (!photo?.originalUrl) continue
         try {
-          await api.resolvePhotoUrls(photo)
-          const resp = await fetch(photo.originalUrl)
+          const signed = await api.resolvePhotoUrls(photo)
+          const resp = await fetch(signed.originalUrl)
           if (resp.ok) {
             const blob = await resp.blob()
             zip.file(fn, blob)
@@ -1469,6 +1469,14 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, rem
   const removingLabel = removingType === 'delete' ? 'Eliminando...' : 'Descartando...'
   const removingIcon = removingType === 'delete' ? '💀' : '🗑️'
 
+  async function handleDownloadClick(e, publicUrl) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!publicUrl) return
+    const signed = await api.resolveSignedUrl(publicUrl)
+    window.open(signed || publicUrl, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div
       className={`photo-card ${isSelected ? 'selected' : ''} ${isProcessing ? 'processing' : ''} ${isRemoving ? 'removing' : ''} ${isFocused ? 'focused' : ''}`}
@@ -1532,10 +1540,10 @@ function PhotoCard({ photo, index, tab, isSelected, isProcessing, isFocused, rem
         <div className="card-footer">
           <div className="dl-actions">
             {photo.originalUrl && (
-              <a className="dl-chip" href={photo.originalUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>📷 JPG</a>
+              <button type="button" className="dl-chip" onClick={e => handleDownloadClick(e, photo.originalUrl)}>📷 JPG</button>
             )}
             {photo.rawUrl && (
-              <a className="dl-chip raw-chip" href={photo.rawUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>🎞️ RAW</a>
+              <button type="button" className="dl-chip raw-chip" onClick={e => handleDownloadClick(e, photo.rawUrl)}>🎞️ RAW</button>
             )}
           </div>
         </div>

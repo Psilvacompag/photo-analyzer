@@ -92,7 +92,10 @@ const BUCKET_URL = 'https://storage.googleapis.com/photo-analyzer-storage/'
 
 function extractGcsPath(publicUrl) {
   if (!publicUrl || !publicUrl.startsWith(BUCKET_URL)) return null
-  return publicUrl.slice(BUCKET_URL.length)
+  let path = publicUrl.slice(BUCKET_URL.length)
+  const qIdx = path.indexOf('?')
+  if (qIdx >= 0) path = path.slice(0, qIdx)
+  return path
 }
 
 // Pending batch: collect individual requests into a single API call
@@ -172,20 +175,21 @@ export function invalidateSignedUrl(publicUrl) {
 
 /**
  * Resolves signed URLs for a single photo's originalUrl and rawUrl (on-demand).
- * Called when opening lightbox or downloading.
+ * Returns a CLONE with signed URLs — never mutates the source photo object
+ * (re-signing a signed URL corrupts the path and causes NoSuchKey errors).
  */
 export async function resolvePhotoUrls(photo) {
   if (!photo) return photo
-
+  const copy = { ...photo }
   const now = Date.now()
   const pathsToSign = []
 
   for (const key of ['originalUrl', 'rawUrl']) {
-    const path = extractGcsPath(photo[key])
+    const path = extractGcsPath(copy[key])
     if (!path) continue
     const cached = signedUrlCache.get(path)
     if (cached && cached.expires > now) {
-      photo[key] = cached.url
+      copy[key] = cached.url
     } else {
       pathsToSign.push({ key, path })
     }
@@ -198,7 +202,7 @@ export async function resolvePhotoUrls(photo) {
       for (const { key, path } of pathsToSign) {
         if (signed[path]) {
           signedUrlCache.set(path, { url: signed[path], expires })
-          photo[key] = signed[path]
+          copy[key] = signed[path]
         }
       }
     } catch (err) {
@@ -206,7 +210,7 @@ export async function resolvePhotoUrls(photo) {
     }
   }
 
-  return photo
+  return copy
 }
 
 // ===== URL Helpers =====
