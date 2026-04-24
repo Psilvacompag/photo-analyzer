@@ -39,7 +39,6 @@ async function loadCoaching() {
     return (
       <div className="coaching">
         <div className="coaching-loading">
-          <div className="coaching-loading-brain">🧠</div>
           <div className="coaching-loading-ring" />
           <p className="coaching-loading-text">Cargando...</p>
           <p className="coaching-loading-sub">Conectando con Firestore</p>
@@ -53,14 +52,12 @@ async function loadCoaching() {
     return (
       <div className="coaching">
         <div className="coaching-cta">
-          <div className="coaching-cta-icon">🤖</div>
           <h2 className="coaching-cta-title">AI Photo Coach</h2>
           <p className="coaching-cta-desc">
             Gemini analiza tus últimas 30 fotos revisadas, detecta patrones recientes,
             identifica fortalezas y debilidades actuales, y genera un plan de mejora personalizado.
           </p>
           <button className="coaching-cta-btn" onClick={loadCoaching}>
-            <span className="coaching-cta-btn-icon">🧠</span>
             Obtener Coaching Personalizado
           </button>
           <p className="coaching-cta-note">Toma ~10 segundos · Usa Gemini 2.5 Flash</p>
@@ -74,7 +71,6 @@ async function loadCoaching() {
     return (
       <div className="coaching">
         <div className="coaching-loading">
-          <div className="coaching-loading-brain">🧠</div>
           <div className="coaching-loading-ring" />
           <p className="coaching-loading-text">Analizando tus fotos recientes...</p>
           <p className="coaching-loading-sub">Gemini está revisando patrones en tus últimas 30 revisadas</p>
@@ -100,14 +96,13 @@ async function loadCoaching() {
     <div className="coaching">
       <div className="coaching-header">
         <div className="coaching-header-left">
-          <h2 className="coaching-main-title">🤖 AI Photo Coaching</h2>
+          <h2 className="coaching-main-title">AI Photo Coaching</h2>
           <p className="coaching-main-sub">Basado en tus últimas 30 fotos revisadas</p>
         </div>
-        <button className="coaching-refresh-btn" onClick={loadCoaching}>🔄 Regenerar</button>
+        <button className="coaching-refresh-btn" onClick={loadCoaching}>Regenerar</button>
       </div>
 
       <div className="coaching-card coaching-resumen">
-        <div className="coaching-resumen-icon">📋</div>
         <div>
           <h3>Tu Nivel Actual</h3>
           <p>{data.resumen_nivel}</p>
@@ -116,7 +111,7 @@ async function loadCoaching() {
 
       <div className="coaching-grid">
         <div className="coaching-card">
-          <h3 className="coaching-section-title good">💪 Fortalezas</h3>
+          <h3 className="coaching-section-title good">Fortalezas</h3>
           <div className="coaching-items">
             {(data.fortalezas || []).map((f, i) => (
               <div key={i} className="coaching-item strength">
@@ -137,7 +132,7 @@ async function loadCoaching() {
         </div>
 
         <div className="coaching-card">
-          <h3 className="coaching-section-title warn">🔧 A Mejorar</h3>
+          <h3 className="coaching-section-title warn">A Mejorar</h3>
           <div className="coaching-items">
             {(data.debilidades || []).map((d, i) => (
               <div key={i} className="coaching-item weakness">
@@ -166,23 +161,23 @@ async function loadCoaching() {
 
       {data.patron_errores && (
         <div className="coaching-card coaching-pattern">
-          <h3 className="coaching-section-title accent">🔍 Patrón de Errores Recurrentes</h3>
+          <h3 className="coaching-section-title accent">Patrón de Errores Recurrentes</h3>
           <p>{data.patron_errores}</p>
         </div>
       )}
 
       {data.mision_semanal && (
         <div className="coaching-card coaching-mission">
-          <div className="coaching-mission-badge">MISIÓN SEMANAL</div>
-          <h3 className="coaching-mission-title">🎯 {data.mision_semanal.titulo}</h3>
+          <div className="coaching-mission-badge">Misión semanal</div>
+          <h3 className="coaching-mission-title">{data.mision_semanal.titulo}</h3>
           <p className="coaching-mission-desc">{data.mision_semanal.descripcion}</p>
           <div className="coaching-mission-grid">
             <div className="coaching-mission-block">
-              <span className="coaching-mission-label">📋 Ejercicio</span>
+              <span className="coaching-mission-label">Ejercicio</span>
               <p>{data.mision_semanal.ejercicio}</p>
             </div>
             <div className="coaching-mission-block">
-              <span className="coaching-mission-label">⚙️ Settings Sugeridos</span>
+              <span className="coaching-mission-label">Settings sugeridos</span>
               <p>{data.mision_semanal.settings_sugeridos}</p>
             </div>
           </div>
@@ -192,13 +187,13 @@ async function loadCoaching() {
       <div className="coaching-grid">
         {data.sweet_spot && (
           <div className="coaching-card coaching-sweetspot">
-            <h3 className="coaching-section-title green">🎯 Tu Sweet Spot</h3>
+            <h3 className="coaching-section-title green">Tu Sweet Spot</h3>
             <p>{data.sweet_spot}</p>
           </div>
         )}
         {data.proximo_objetivo && (
           <div className="coaching-card coaching-next">
-            <h3 className="coaching-section-title purple">🚀 Próximo Objetivo</h3>
+            <h3 className="coaching-section-title purple">Próximo Objetivo</h3>
             <p>{data.proximo_objetivo}</p>
           </div>
         )}

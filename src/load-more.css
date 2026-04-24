@@ -1,43 +1,30 @@
-/* ==========================================
-   LOAD MORE - Agregar al CSS existente
-   ========================================== */
-
+/* Darkroom — Load More */
 .load-more-wrap {
   display: flex;
   justify-content: center;
-  padding: 2rem 1rem 3rem;
+  padding: 24px 14px;
+  grid-column: 1 / -1;
 }
-
 .load-more-btn {
-  display: flex;
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 500;
+  border-radius: 2px;
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 2rem;
-  background: var(--surface-solid);
-  border: var(--glass-border);
-  border-radius: var(--radius-md);
-  color: var(--text);
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-smooth);
-  box-shadow: var(--shadow-sm);
+  gap: 10px;
 }
-
-.load-more-btn:hover:not(:disabled) {
-  border: var(--glass-border-hover);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-.load-more-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
+.load-more-btn:hover:not(:disabled) { color: var(--text); border-color: var(--accent); }
+.load-more-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .load-more-count {
-  font-size: 0.8rem;
-  opacity: 0.6;
-  padding-left: 0.5rem;
-  border-left: 1px solid var(--border, #333);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text5);
+  padding-left: 10px;
+  border-left: 1px solid var(--hairline);
 }
-

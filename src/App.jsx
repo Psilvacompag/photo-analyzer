@@ -66,9 +66,9 @@ function LoginScreen() {
   return (
     <div className="login-screen">
       <div className="login-card">
-        <div className="login-logo">📸</div>
+        <div className="login-logo" aria-hidden="true" />
         <h1 className="login-title">Photo<span>Analyzer</span></h1>
-        <p className="login-subtitle">Curación inteligente con IA</p>
+        <p className="login-subtitle">Curación con IA</p>
 
         <button className="login-btn" onClick={handleLogin} disabled={loading}>
           {loading ? (
@@ -992,25 +992,27 @@ function Gallery({ user }) {
   // ===== RENDER =====
   return (
     <div className="app">
-      {/* HEADER */}
+      {/* TITLE BAR */}
       <header className="header">
         <div className="header-top">
           <div className="logo">
-            <div className="logo-icon">📸</div>
-            <div>
-              <h1>Photo<span>Analyzer</span></h1>
-              <div className="header-sub">Curación inteligente con IA</div>
-            </div>
+            <div className="logo-icon" aria-hidden="true" />
+            <h1>PhotoAnalyzer</h1>
+          </div>
+          <div className="crumbs">
+            <span className="crumb">Biblioteca</span>
+            <span className="crumb-sep">/</span>
+            <span className="crumb crumb-active">
+              {tab === 'pending' ? 'Pendientes'
+                : tab === 'reviewed' ? 'Revisadas'
+                : tab === 'analytics' ? 'Analytics'
+                : tab === 'shared' ? 'Compartidas'
+                : tab === 'admin' ? 'Admin' : ''}
+            </span>
           </div>
           <div className="header-right">
-            <div className={`status-dot ${connected ? 'connected' : ''}`} title={connected ? 'Conectado a Firestore' : 'Conectando...'} />
-            <button
-              className="theme-toggle-btn"
-              onClick={() => { const t = toggleTheme(); setTheme(t) }}
-              title={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-            >
-              {theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19'}
-            </button>
+            <span className={`status-dot ${connected ? 'connected' : ''}`} title={connected ? 'Firestore sync' : 'Conectando...'} />
+            <span className="sync-label">Sync Firestore</span>
             <UserMenu user={user} onLogout={handleLogout} />
           </div>
         </div>
@@ -1019,15 +1021,15 @@ function Gallery({ user }) {
       {/* STATS */}
       <div className="stats-grid">
         <div className="stat-card clickable" onClick={() => { setTab('pending'); clearSelection() }}>
-          <div className="stat-value" style={{ color: 'var(--yellow)' }}>{pendingCount ?? pending.length}</div>
+          <div className="stat-value" style={{ color: 'var(--accent)' }}>{pendingCount ?? pending.length}</div>
           <div className="stat-label">Pendientes</div>
         </div>
         <div className="stat-card clickable" onClick={() => { setTab('reviewed'); clearSelection() }}>
-          <div className="stat-value" style={{ color: 'var(--accent)' }}>{reviewedCount ?? reviewed.length}</div>
+          <div className="stat-value">{reviewedCount ?? reviewed.length}</div>
           <div className="stat-label">Revisadas</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">{avg}</div>
+          <div className="stat-value">{avg}<span className="stat-unit">/10</span></div>
           <div className="stat-label">Score promedio</div>
           {avg !== '—' && <ScoreBar score={parseFloat(avg)} />}
         </div>
@@ -1041,25 +1043,25 @@ function Gallery({ user }) {
       <div className="tabs-wrap">
         <div className="tabs">
           <button className={`tab ${tab === 'pending' ? 'active' : ''}`} onClick={() => { setTab('pending'); clearSelection() }}>
-            📥 Pendientes <span className="count">{pendingCount ?? pending.length}</span>
+            Pendientes <span className="count">{String(pendingCount ?? pending.length).padStart(2, '0')}</span>
           </button>
           <button className={`tab ${tab === 'reviewed' ? 'active' : ''}`} onClick={() => { setTab('reviewed'); clearSelection() }}>
-            ✅ Revisadas <span className="count">{reviewedCount ?? reviewed.length}</span>
+            Revisadas <span className="count">{String(reviewedCount ?? reviewed.length).padStart(2, '0')}</span>
           </button>
           <button className={`tab ${tab === 'analytics' ? 'active' : ''}`} onClick={() => { setTab('analytics'); clearSelection() }}>
-            📊 Analytics
+            Analytics
           </button>
           <button className={`tab ${tab === 'shared' ? 'active' : ''}`} onClick={() => { setTab('shared'); clearSelection() }}>
-            🤝 Compartidas
+            Compartidas
           </button>
           {isAdmin && (
             <button className={`tab ${tab === 'admin' ? 'active' : ''}`} onClick={() => { setTab('admin'); clearSelection() }}>
-              ⚙️ Admin
+              Admin
             </button>
           )}
         </div>
         <div className="kbd-hints">
-          <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd>{isAdmin && <kbd>5</kbd>} tabs · <kbd>J</kbd><kbd>K</kbd> navegar · <kbd>Space</kbd> seleccionar · <kbd>Enter</kbd> ver · <kbd>Esc</kbd> cerrar
+          <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd>{isAdmin && <kbd>5</kbd>} tabs · <kbd>J</kbd><kbd>K</kbd> nav · <kbd>Space</kbd> sel · <kbd>Enter</kbd> ver · <kbd>Esc</kbd> cerrar
         </div>
       </div>
 
@@ -1258,17 +1260,17 @@ function Gallery({ user }) {
           {removingCount === 0 && <>
             <button className="toolbar-btn cancel" onClick={clearSelection}>Cancelar</button>
             {selectedCount === 2 && (
-              <button className="toolbar-btn secondary" onClick={handleCompare}>🔍 Comparar</button>
+              <button className="toolbar-btn secondary" onClick={handleCompare}>Comparar</button>
             )}
             <button className="toolbar-btn secondary" onClick={handleBulkDownload} disabled={downloading}>
-              {downloading ? '⏳ Descargando...' : '📦 Descargar'}
+              {downloading ? 'Descargando…' : 'Descargar'}
             </button>
-            <button className="toolbar-btn warn" onClick={handleDiscard}>🗑️ Descartar</button>
+            <button className="toolbar-btn warn" onClick={handleDiscard}>Descartar</button>
             {tab === 'reviewed' && (
-              <button className="toolbar-btn danger" onClick={handleDelete}>💀 Eliminar</button>
+              <button className="toolbar-btn danger" onClick={handleDelete}>Eliminar</button>
             )}
             {tab === 'pending' && (
-              <button className="toolbar-btn primary" onClick={handleAnalyze}>🤖 Analizar con IA</button>
+              <button className="toolbar-btn primary" onClick={handleAnalyze}>Analizar con IA</button>
             )}
           </>}
         </div>

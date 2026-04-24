@@ -141,8 +141,10 @@ export default function Upload({ showToast }) {
   return (
     <div className="upload-section">
       <div className="upload-header">
-        <h3 className="upload-title">📤 Subir Fotos</h3>
-        <p className="upload-subtitle">Arrastra archivos JPG o ARW, o usa los botones</p>
+        <div>
+          <h3 className="upload-title">Subir Fotos</h3>
+          <p className="upload-subtitle">Arrastra JPG/ARW o usa los botones · máx 50 MB</p>
+        </div>
       </div>
 
       <div
@@ -153,16 +155,18 @@ export default function Upload({ showToast }) {
       >
         {files.length === 0 ? (
           <div className="upload-empty">
-            <div className="upload-empty-icon">📁</div>
-            <p>Arrastra JPG o RAW aquí</p>
-            <span className="upload-empty-hint">o usa los botones de abajo</span>
+            <div className="upload-empty-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 3v12m0-12-4 4m4-4 4 4M5 21h14"/></svg>
+            </div>
+            <p>Arrastra fotos o carpeta aquí</p>
+            <span className="upload-empty-hint">RAW · JPG · HEIC — hasta 200 a la vez</span>
           </div>
         ) : (
           <div className="upload-file-list">
             {files.map((entry, i) => (
               <div key={entry.file.name} className={`upload-file-item ${entry.status} ${duplicates[entry.file.name] ? 'duplicate' : ''}`}>
                 <div className="upload-file-icon">
-                  {entry.type === 'jpeg' ? '📷' : '🎞️'}
+                  {entry.type === 'jpeg' ? 'JPG' : 'RAW'}
                 </div>
                 <div className="upload-file-info">
                   <span className="upload-file-name">{entry.file.name}</span>
@@ -188,8 +192,8 @@ export default function Upload({ showToast }) {
                   {entry.status === 'uploading' && (
                     <span className="upload-file-pct">{entry.progress}%</span>
                   )}
-                  {entry.status === 'done' && <span className="upload-file-check">✅</span>}
-                  {entry.status === 'error' && <span className="upload-file-error">⚠️</span>}
+                  {entry.status === 'done' && <span className="upload-file-check">✓</span>}
+                  {entry.status === 'error' && <span className="upload-file-error">!</span>}
                 </div>
               </div>
             ))}
@@ -200,10 +204,10 @@ export default function Upload({ showToast }) {
       <div className="upload-actions">
         <div className="upload-add-btns">
           <button className="upload-add-btn jpeg" onClick={() => jpegInputRef.current?.click()}>
-            📷 Agregar JPG
+            + Agregar JPG
           </button>
           <button className="upload-add-btn raw" onClick={() => rawInputRef.current?.click()}>
-            🎞️ Agregar RAW
+            + Agregar RAW
           </button>
           <input ref={jpegInputRef} type="file" accept={ACCEPTED_JPEG} multiple hidden
             onChange={e => { addFiles(Array.from(e.target.files)); e.target.value = '' }} />
@@ -228,9 +232,9 @@ export default function Upload({ showToast }) {
               disabled={uploading || pendingCount === 0}
             >
               {uploading ? (
-                <><div className="spinner-ring small" /> Subiendo...</>
+                <><div className="spinner-ring small" /> Subiendo…</>
               ) : (
-                `📤 Subir ${pendingCount} archivo(s)`
+                `Subir ${pendingCount} archivo(s)`
               )}
             </button>
           </div>

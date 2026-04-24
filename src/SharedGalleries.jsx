@@ -242,7 +242,7 @@ export default function SharedGalleries({ user }) {
             ← Volver
           </button>
           <h2 className="shared-gallery-title">
-            📸 Galeria de {viewingGallery}
+            Galería de {viewingGallery}
           </h2>
           <span className="shared-gallery-count">{galleryPhotos.length} fotos</span>
         </div>
@@ -296,7 +296,7 @@ export default function SharedGalleries({ user }) {
     <div className="shared-galleries">
       {/* Share my gallery */}
       <div className="shared-section">
-        <h3 className="shared-section-title">🔗 Compartir mi galeria</h3>
+        <h3 className="shared-section-title">Compartir mi galería</h3>
         <form className="shared-share-form" onSubmit={handleShare}>
           <input
             type="email"
@@ -330,7 +330,7 @@ export default function SharedGalleries({ user }) {
 
       {/* Galleries shared with me */}
       <div className="shared-section">
-        <h3 className="shared-section-title">📸 Galerias compartidas conmigo</h3>
+        <h3 className="shared-section-title">Galerías compartidas conmigo</h3>
 
         {loadingShares ? (
           <div className="shared-loading">
@@ -339,9 +339,8 @@ export default function SharedGalleries({ user }) {
           </div>
         ) : sharedWithMe.length === 0 ? (
           <div className="shared-empty-state">
-            <div className="shared-empty-icon">🤝</div>
-            <p>Nadie ha compartido su galeria contigo aun.</p>
-            <p className="shared-empty-hint">Cuando alguien comparta su galeria, aparecera aqui.</p>
+            <p>Nadie ha compartido su galería contigo aún.</p>
+            <p className="shared-empty-hint">Cuando alguien comparta, aparecerá aquí.</p>
           </div>
         ) : (
           <div className="shared-cards">

@@ -6,28 +6,28 @@ import {
 import * as api from './api'
 
 const COLORS = {
-  accent: '#6c8cff',
-  green: '#34d399',
-  yellow: '#fbbf24',
-  red: '#f87171',
-  orange: '#fb923c',
-  purple: '#a78bfa',
-  pink: '#f472b6',
-  cyan: '#22d3ee',
-  surface: '#141418',
-  surface2: '#1c1c22',
-  border: '#26262e',
-  text: '#e8e8ed',
-  text2: '#8888a0',
-  text3: '#55556a',
+  accent: '#c89660',
+  green: '#7fb069',
+  yellow: '#c89660',
+  red: '#b05555',
+  orange: '#c89660',
+  purple: '#8a8884',
+  pink: '#b05555',
+  cyan: '#7fb069',
+  surface: '#151414',
+  surface2: '#181715',
+  border: '#2e2b27',
+  text: '#e8e4da',
+  text2: '#a8a6a2',
+  text3: '#6a6864',
 }
 
 const CAT_COLORS = {
   paisajes: COLORS.green,
-  mascotas: COLORS.yellow,
-  arquitectura: COLORS.purple,
-  personas: COLORS.pink,
-  comida: COLORS.orange,
+  mascotas: COLORS.accent,
+  arquitectura: COLORS.text2,
+  personas: COLORS.red,
+  comida: COLORS.accent,
   otras: COLORS.text3,
 }
 
