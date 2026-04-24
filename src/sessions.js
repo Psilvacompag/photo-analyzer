@@ -8,13 +8,19 @@ function toDate(val) {
   return isNaN(d.getTime()) ? null : d
 }
 
+// Prefer capture date (when the shutter fired) over upload date
+function sessionDate(photo) {
+  return toDate(photo.takenAt) || toDate(photo.uploadedAt)
+}
+
 function toDayKey(d) {
   return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : 'none'
 }
 
 /**
- * Groups photos by calendar day based on uploadedAt.
- * @param {Array} photos - Array of photo objects with uploadedAt
+ * Groups photos by calendar day based on capture date (takenAt), falling back
+ * to uploadedAt for legacy photos without EXIF DateTimeOriginal.
+ * @param {Array} photos - Array of photo objects
  * @returns {Array<{date: string, photos: Array, avgScore: number, startTime: Date}>}
  */
 export function groupIntoSessions(photos, { sortByScore = false } = {}) {
@@ -23,7 +29,7 @@ export function groupIntoSessions(photos, { sortByScore = false } = {}) {
   // Group by day
   const dayMap = new Map()
   for (const photo of photos) {
-    const d = toDate(photo.uploadedAt)
+    const d = sessionDate(photo)
     const key = toDayKey(d)
     if (!dayMap.has(key)) dayMap.set(key, { photos: [], startTime: d })
     dayMap.get(key).photos.push(photo)
@@ -42,8 +48,8 @@ export function groupIntoSessions(photos, { sortByScore = false } = {}) {
     const sortedPhotos = sortByScore
       ? [...s.photos].sort((a, b) => (b.score || 0) - (a.score || 0))
       : [...s.photos].sort((a, b) => {
-          const ta = toDate(a.uploadedAt)?.getTime() || 0
-          const tb = toDate(b.uploadedAt)?.getTime() || 0
+          const ta = sessionDate(a)?.getTime() || 0
+          const tb = sessionDate(b)?.getTime() || 0
           return tb - ta
         })
     return { date, photos: sortedPhotos, avgScore, startTime: s.startTime }
